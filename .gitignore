@@ -4,3 +4,4 @@ docker-build
 compile_commands.json
 docs/*
 !docs/Doxyfile
+*.profraw

@@ -3,12 +3,19 @@ project(adundb)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(ADUN_BUILD_TESTS ON)
 
 include_directories(include)
 
-set(SOURCES src/Main.cpp src/Value.cpp)
+set(SOURCES 
+  src/Value.cpp 
+  src/Result.cpp 
+  src/ResultIterator.cpp
+  src/Table.cpp
+  src/Column.cpp
+)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_library(${PROJECT_NAME} ${SOURCES})
 
 # Dependencies
 include(FetchContent)
@@ -45,5 +52,11 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Boost)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::assert Boost::stacktrace
-                                              Boost::range)
+# TODO: pimpl in Value
+target_link_libraries(${PROJECT_NAME} PUBLIC Boost::assert Boost::stacktrace)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range)
+
+# Tests
+if (ADUN_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
