@@ -49,7 +49,7 @@ void Table::addRow(
     std::vector<std::pair<std::string, Value>> assignments) {
   std::vector<Value> values;
   values.resize(m_Header.size());
-  for (auto&& [name, col] : m_Header) {
+  for (auto& [name, col] : m_Header) {
     if (col.modifiers & Column::Modifier::HasDefault) {
       values[col.index] = col.sampleValue;
     }
