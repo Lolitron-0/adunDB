@@ -3,6 +3,7 @@ project(adundb)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(ADUN_BUILD_TESTS ON)
 
 include_directories(include)
@@ -13,6 +14,7 @@ set(SOURCES
   src/ResultIterator.cpp
   src/Table.cpp
   src/Column.cpp
+  src/Assert.cpp
 )
 
 add_library(${PROJECT_NAME} ${SOURCES})
@@ -53,8 +55,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Boost)
 
 # TODO: pimpl in Value
-target_link_libraries(${PROJECT_NAME} PUBLIC Boost::assert Boost::stacktrace)
-target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range)
+target_link_libraries(${PROJECT_NAME} PUBLIC Boost::assert)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range Boost::stacktrace)
 
 # Tests
 if (ADUN_BUILD_TESTS)

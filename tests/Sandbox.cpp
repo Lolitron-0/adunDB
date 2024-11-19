@@ -1,5 +1,6 @@
 #include "adun/Table.hpp"
 #include "adun/Value.hpp"
+#include <iostream>
 
 auto main() -> int {
   adun::Table::Header scheme;

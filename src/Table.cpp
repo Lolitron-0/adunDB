@@ -1,6 +1,8 @@
 #include "adun/Table.hpp"
 #include "adun/Assert.hpp"
 #include "adun/Result.hpp"
+#include <fmt/format.h>
+#include <ranges>
 
 namespace adun {
 
@@ -45,10 +47,10 @@ auto Table::selectRows(const std::function<bool(const Row&)>& filter,
 }
 
 void Table::addRow(
-    std::vector<std::pair<std::string, Value>> assignments) {
+    const std::vector<std::pair<std::string, Value>>& assignments) {
   std::vector<Value> values;
   values.resize(m_Header.size());
-  for (auto&& [name, col] : m_Header) {
+  for (auto& [name, col] : m_Header) {
     if (col.modifiers & Column::Modifier::HasDefault) {
       values[col.index] = col.sampleValue;
     }
@@ -60,7 +62,7 @@ void Table::addRow(
       values[col.index] = col.sampleValue.get<int32_t>();
     }
   }
-  for (auto&& [name, val] : assignments) {
+  for (const auto& [name, val] : assignments) {
     if (!m_Header.contains(name)) {
       throw InvalidRowException(fmt::format("No such column: {}", name));
     }
@@ -75,9 +77,10 @@ void Table::addRow(
     // uniqueness
     if (column.modifiers & Column::Modifier::Unique &&
         /// @todo faster unique check
-        std::ranges::find_if(m_Rows, [&column, &val](const auto& row) {
-          return row.get(column.index) == val;
-        }) != m_Rows.end()) {
+        std::ranges::find_if(m_Rows,
+                             [&column, val = val](const auto& row) {
+                               return row.get(column.index) == val;
+                             }) != m_Rows.end()) {
       throw InvalidRowException(
           fmt::format("Value {} is not unique", name));
     }
@@ -88,7 +91,7 @@ void Table::addRow(
           "Auto increment column {} should not be assigned", name));
     }
 
-    values[column.index] = std::move(val);
+    values[column.index] = val;
   }
 
   if (std::ranges::find_if(values, [](const auto& val) {

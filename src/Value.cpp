@@ -4,11 +4,13 @@
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
-auto fmt::formatter<std::monostate>::format(std::monostate /*m*/,
-                                            format_context& ctx) const
-    -> format_context::iterator {
-  return formatter<std::string_view>::format("NULL", ctx);
-}
+template <>
+struct fmt::formatter<std::monostate> : fmt::formatter<std::string_view> {
+  auto format(std::monostate,
+              format_context& ctx) const -> format_context::iterator {
+    return formatter<std::string_view>::format("NULL", ctx);
+  }
+};
 
 namespace adun {
 
