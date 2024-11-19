@@ -5,7 +5,6 @@
 #include "adun/Row.hpp"
 #include "adun/Types.hpp"
 #include "adun/Value.hpp"
-#include <fmt/format.h>
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -30,7 +29,8 @@ public:
   auto selectRows(const std::function<bool(const Row&)>& filter,
                   const std::vector<std::string>& columns) -> Result;
 
-  void addRow(const std::vector<std::pair<std::string, Value>>& assignments);
+  void addRow(
+      const std::vector<std::pair<std::string, Value>>& assignments);
 
 private:
   std::string m_Name;
