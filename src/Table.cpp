@@ -1,6 +1,7 @@
 #include "adun/Table.hpp"
 #include "adun/Assert.hpp"
 #include "adun/Result.hpp"
+#include <ranges>
 
 namespace adun {
 
