@@ -46,7 +46,7 @@ auto Table::selectRows(const std::function<bool(const Row&)>& filter,
 }
 
 void Table::addRow(
-    std::vector<std::pair<std::string, Value>> assignments) {
+    const std::vector<std::pair<std::string, Value>>& assignments) {
   std::vector<Value> values;
   values.resize(m_Header.size());
   for (auto& [name, col] : m_Header) {
@@ -76,9 +76,10 @@ void Table::addRow(
     // uniqueness
     if (column.modifiers & Column::Modifier::Unique &&
         /// @todo faster unique check
-        std::ranges::find_if(m_Rows, [&column, &val](const auto& row) {
-          return row.get(column.index) == val;
-        }) != m_Rows.end()) {
+        std::ranges::find_if(m_Rows,
+                             [&column, val = val](const auto& row) {
+                               return row.get(column.index) == val;
+                             }) != m_Rows.end()) {
       throw InvalidRowException(
           fmt::format("Value {} is not unique", name));
     }

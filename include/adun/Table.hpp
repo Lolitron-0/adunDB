@@ -30,7 +30,7 @@ public:
   auto selectRows(const std::function<bool(const Row&)>& filter,
                   const std::vector<std::string>& columns) -> Result;
 
-  void addRow(std::vector<std::pair<std::string, Value>> assignments);
+  void addRow(const std::vector<std::pair<std::string, Value>>& assignments);
 
 private:
   std::string m_Name;

@@ -2,17 +2,10 @@
 #include "adun/Assert.hpp"
 #include <concepts>
 #include <cstdint>
-#include <fmt/format.h>
 #include <string>
 #include <type_traits>
 #include <variant>
 #include <vector>
-
-template <>
-struct fmt::formatter<std::monostate> : fmt::formatter<std::string_view> {
-  auto format(std::monostate,
-              format_context& ctx) const -> format_context::iterator;
-};
 
 namespace adun {
 
