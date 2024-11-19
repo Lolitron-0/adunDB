@@ -61,7 +61,7 @@ void Table::addRow(
       values[col.index] = col.sampleValue.get<int32_t>();
     }
   }
-  for (auto&& [name, val] : assignments) {
+  for (const auto& [name, val] : assignments) {
     if (!m_Header.contains(name)) {
       throw InvalidRowException(fmt::format("No such column: {}", name));
     }
@@ -89,7 +89,7 @@ void Table::addRow(
           "Auto increment column {} should not be assigned", name));
     }
 
-    values[column.index] = std::move(val);
+    values[column.index] = val;
   }
 
   if (std::ranges::find_if(values, [](const auto& val) {
