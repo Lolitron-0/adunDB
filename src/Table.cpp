@@ -43,7 +43,7 @@ auto Table::selectRows(const std::function<bool(const Row&)>& filter,
     }
     columnMap[columnName] = m_Header.at(columnName).index;
   }
-  return Result{ std::move(rows), std::move(columnMap) };
+  return Result{ std::move(rows), std::move(columnMap), rows.size() };
 }
 
 void Table::addRow(

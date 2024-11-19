@@ -5,9 +5,8 @@
       "name": "(lldb) Launch",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/tests/adundb_tests_unit",
-      "args": [
-      ],
+      "program": "${workspaceFolder}/build/tests/adundb_tests_sandbox",
+      "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

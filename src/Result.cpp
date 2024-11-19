@@ -4,9 +4,10 @@
 namespace adun {
 
 Result::Result(std::vector<RowRefWrapper> rows,
-               ColumnNameIndexMap columnNames)
+               ColumnNameIndexMap columnNames, size_t affectedRows)
     : m_Rows{ std::move(rows) },
-      m_ColumnNames{ std::move(columnNames) } {
+      m_ColumnNames{ std::move(columnNames) },
+      m_AffectedRows{ affectedRows } {
 }
 
 auto Result::begin() -> ResultIterator {

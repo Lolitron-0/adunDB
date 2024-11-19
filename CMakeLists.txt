@@ -8,14 +8,21 @@ set(ADUN_BUILD_TESTS ON)
 
 include_directories(include)
 
-set(SOURCES 
-  src/Value.cpp 
-  src/Result.cpp 
-  src/ResultIterator.cpp
-  src/Table.cpp
-  src/Column.cpp
-  src/Assert.cpp
-)
+set(SOURCES
+    src/Value.cpp
+    src/Result.cpp
+    src/ResultIterator.cpp
+    src/Table.cpp
+    src/Column.cpp
+    src/Assert.cpp
+    src/Database.cpp
+    src/Parser/Lexer.cpp
+    src/Parser/Token.cpp
+    src/Parser/Parser.cpp
+    src/Parser/ExpressionNode.cpp
+    src/Parser/BinOpExpr.cpp
+    src/Parser/CreateCommand.cpp
+    src/Parser/Utils.cpp)
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
@@ -30,6 +37,15 @@ FetchContent_Declare(
   GIT_TAG c316615e9a5fb3535293082fb187856da01ea492)
 FetchContent_MakeAvailable(cul)
 target_link_libraries(${PROJECT_NAME} PRIVATE cul)
+
+# frozen
+message(STATUS "Fetching dependency: frozen")
+FetchContent_Declare(
+  frozen
+  GIT_REPOSITORY https://github.com/serge-sans-paille/frozen
+  GIT_TAG 06bee5321cecd9a9ffaceb164b5adb2ffafae781)
+FetchContent_MakeAvailable(frozen)
+target_link_libraries(${PROJECT_NAME} PRIVATE frozen)
 
 # fmt
 message(STATUS "Fetching dependency: fmt")
@@ -59,6 +75,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Boost::assert)
 target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range Boost::stacktrace)
 
 # Tests
-if (ADUN_BUILD_TESTS)
+if(ADUN_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
