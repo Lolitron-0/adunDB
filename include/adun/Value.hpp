@@ -42,9 +42,7 @@ template <typename T>
 concept IsDBValue = isVariantMember<T, DBValueUnion>::value;
 
 template <typename T>
-struct TypeToEnumMap {
-  static_assert(false, "Conversion not implemented");
-};
+struct TypeToEnumMap;
 
 template <std::integral T>
 struct TypeToEnumMap<T> {
