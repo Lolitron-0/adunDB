@@ -1,9 +1,12 @@
 #pragma once
 #include "adun/Assert.hpp"
+#include "adun/Exceptions.hpp"
 #include <concepts>
 #include <cstdint>
+#include <ostream>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -72,6 +75,18 @@ struct HoldsMonostateVisitor {
 
 } // namespace internal
 
+class ValueException : public DatabaseException {
+public:
+  using DatabaseException::DatabaseException;
+};
+
+class ValueOperatorException : public ValueException {
+public:
+  ValueOperatorException()
+      : ValueException{ "Unsupported type for operation" } {
+  }
+};
+
 class Value {
 public:
   template <internal::IsDBValue T>
@@ -139,6 +154,101 @@ public:
     adun_assert(m_Type == other.m_Type,
                 "Cannot compare values of different types");
     return m_Data <=> other.m_Data;
+  }
+
+  auto operator+(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    return std::visit(
+        [](auto&& lhs, auto&& rhs) {
+          if constexpr (std::is_same_v<decltype(lhs), decltype(rhs)> &&
+                        (std::is_integral_v<
+                             std::remove_cvref_t<decltype(lhs)>> ||
+                         std::is_same_v<
+                             std::remove_cvref_t<decltype(lhs)>,
+                             std::string>)) {
+            return Value{ lhs + rhs };
+          }
+
+          throw ValueOperatorException{};
+          return Value{};
+        },
+        m_Data, other.m_Data);
+  }
+
+  auto operator-(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<int32_t>(m_Data) &&
+        std::holds_alternative<int32_t>(other.m_Data)) {
+      return std::get<int32_t>(m_Data) - std::get<int32_t>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator*(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<int32_t>(m_Data) &&
+        std::holds_alternative<int32_t>(other.m_Data)) {
+      return std::get<int32_t>(m_Data) * std::get<int32_t>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator/(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<int32_t>(m_Data) &&
+        std::holds_alternative<int32_t>(other.m_Data)) {
+      return std::get<int32_t>(m_Data) / std::get<int32_t>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator%(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<int32_t>(m_Data) &&
+        std::holds_alternative<int32_t>(other.m_Data)) {
+      return std::get<int32_t>(m_Data) % std::get<int32_t>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator&&(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<bool>(m_Data) &&
+        std::holds_alternative<bool>(other.m_Data)) {
+      return std::get<bool>(m_Data) && std::get<bool>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator||(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<bool>(m_Data) &&
+        std::holds_alternative<bool>(other.m_Data)) {
+      return std::get<bool>(m_Data) || std::get<bool>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator^(const Value& other) const -> Value {
+    adun_assert(m_Type == other.m_Type,
+                "Cannot operate values of different types");
+    if (std::holds_alternative<bool>(m_Data) &&
+        std::holds_alternative<bool>(other.m_Data)) {
+      return std::get<bool>(m_Data) ^ std::get<bool>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  friend auto operator<<(std::ostream& os,
+                         const Value& value) -> std::ostream& {
+    return os << value.toString();
   }
 
 private:

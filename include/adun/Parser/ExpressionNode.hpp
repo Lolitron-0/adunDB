@@ -2,7 +2,11 @@
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Value.hpp"
 
-namespace adun::ast {
+namespace adun {
+
+class Row;
+
+namespace ast {
 
 class ExpressionNode : public Node {
 protected:
@@ -11,6 +15,11 @@ protected:
   ExpressionNode(NodeKind kind, ValueType type);
 
 public:
+  [[nodiscard]] virtual auto evaluate(
+      const Row& row,
+      const std::unordered_map<std::string, size_t>& columns) const
+      -> Value = 0;
+
   [[nodiscard]] auto isTypeResolved() const -> bool;
 
   [[nodiscard]] auto getType() const -> ValueType;
@@ -21,4 +30,6 @@ protected:
   ValueType m_Type;
 };
 
-} // namespace adun::ast
+} // namespace ast
+
+} // namespace adun

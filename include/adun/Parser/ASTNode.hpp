@@ -1,8 +1,5 @@
 #pragma once
-#include "adun/Parser/Utils.hpp"
 #include <string_view>
-#include <utility>
-#include <vector>
 
 namespace adun::ast {
 
@@ -21,6 +18,8 @@ enum class NodeKind {
   StringExpr,
   BinOpExpr,
   CreateCommand,
+  InsertCommand,
+  SelectCommand,
   QueryASTRoot,
   NUM_NODES
 };

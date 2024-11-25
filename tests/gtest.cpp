@@ -1,4 +1,5 @@
 #include "adun/Column.hpp"
+#include "adun/Database.hpp"
 #include "adun/Table.hpp"
 #include "adun/Value.hpp"
 #include <gtest/gtest.h>
@@ -7,7 +8,7 @@
 using namespace adun; // NOLINT
 using ColMod = Column::Modifier;
 
-Table::Header testScheme = {
+Table::Scheme testScheme = {
   { "id", Column{ ValueType::Integer,
                   ColMod::AutoIncrement | ColMod::Unique } },
   { "name", Column{ ValueType::String, ColMod::Unique } },
@@ -15,7 +16,7 @@ Table::Header testScheme = {
 };
 
 TEST(Table, Creation) {
-  Table::Header scheme;
+  Table::Scheme scheme;
   scheme["id"]   = Column{ ValueType::Integer,
                          ColMod::AutoIncrement | ColMod::Unique };
   scheme["name"] = Column{ "default", ColMod::HasDefault };
@@ -57,4 +58,9 @@ TEST(Column, Creation) {
   EXPECT_ANY_THROW(Column col(
       ValueType::Integer, ColMod::AutoIncrement | ColMod::HasDefault));
   EXPECT_ANY_THROW(Column col("a", ColMod::Unique | ColMod::HasDefault));
+}
+
+TEST(Database, Create) {
+  Database db;
+  EXPECT_NO_THROW(db.execute("CREATE TABLE test (id INTEGER);"));
 }

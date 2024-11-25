@@ -1,4 +1,5 @@
 #pragma once
+#include "adun/Exceptions.hpp"
 #include "adun/Parser/Token.hpp"
 #include "adun/Parser/Utils.hpp"
 #include <list>
@@ -8,11 +9,9 @@ namespace adun {
 
 using TokenList = std::list<Token>;
 
-class LexerFatalError : public std::runtime_error {
+class LexerFatalError : public DatabaseException {
 public:
-  LexerFatalError()
-      : std::runtime_error{ "Lexer fatal failure. Aborting." } {
-  }
+  using DatabaseException::DatabaseException;
 };
 
 class Lexer {

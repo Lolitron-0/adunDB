@@ -3,11 +3,14 @@
 #include <stdexcept>
 namespace adun {
 
-class TableException : public std::runtime_error {
+class DatabaseException : public std::runtime_error {
 protected:
-  explicit TableException(const std::string& msg)
-      : std::runtime_error{ msg } {
-  }
+  using std::runtime_error::runtime_error;
+};
+
+class TableException : public DatabaseException {
+protected:
+  using DatabaseException::DatabaseException;
 };
 
 } // namespace adun

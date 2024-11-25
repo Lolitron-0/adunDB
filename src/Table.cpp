@@ -10,7 +10,7 @@ InvalidRowException::InvalidRowException(const std::string& msg)
     : TableException{ msg } {
 }
 
-Table::Table(std::string name, Header scheme)
+Table::Table(std::string name, Scheme scheme)
     : m_Name{ std::move(name) },
       m_Header{ std::move(scheme) } {
   int i{ 0 };
@@ -26,7 +26,7 @@ auto Table::getName() const -> std::string {
   return m_Name;
 }
 
-auto Table::selectRows(const std::function<bool(const Row&)>& filter,
+auto Table::selectRows(const Selector& filter,
                        const std::vector<std::string>& columns)
     -> Result {
   std::vector<RowRefWrapper> rows;
@@ -104,4 +104,12 @@ void Table::addRow(
   m_Rows.emplace_back(values);
 }
 
+auto Table::getColumnMap() const -> const ColumnNameIndexMap& {
+  if (m_ColumnMap.empty()) {
+    for (auto&& [columnName, column] : m_Header) {
+      m_ColumnMap[columnName] = column.index;
+    }
+  }
+  return m_ColumnMap;
+}
 } // namespace adun

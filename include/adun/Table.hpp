@@ -5,7 +5,6 @@
 #include "adun/Row.hpp"
 #include "adun/Types.hpp"
 #include "adun/Value.hpp"
-#include <functional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -20,13 +19,15 @@ public:
 
 class Table {
 public:
-  using Header = std::unordered_map<std::string, Column>;
+  using Scheme = std::unordered_map<std::string, Column>;
 
-  Table(std::string name, Header scheme);
+  Table(std::string name, Scheme scheme);
 
   [[nodiscard]] auto getName() const -> std::string;
 
-  auto selectRows(const std::function<bool(const Row&)>& filter,
+  auto getColumnMap() const -> const ColumnNameIndexMap&;
+
+  auto selectRows(const Selector& filter,
                   const std::vector<std::string>& columns) -> Result;
 
   void addRow(
@@ -34,8 +35,9 @@ public:
 
 private:
   std::string m_Name;
-  Header m_Header;
+  Scheme m_Header;
   std::vector<Row> m_Rows;
+  mutable ColumnNameIndexMap m_ColumnMap;
 };
 
 } // namespace adun
