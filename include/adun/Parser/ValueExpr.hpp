@@ -10,6 +10,13 @@ public:
         m_Value{ std::move(value) } {
   }
 
+  [[nodiscard]] auto evaluate(
+      const Row& /*row*/,
+      const std::unordered_map<std::string, size_t>& /*columns*/) const
+      -> Value override {
+    return m_Value;
+  }
+
   [[nodiscard]] auto getValue() const -> Value {
     return m_Value;
   }

@@ -6,6 +6,7 @@
 #include "adun/Parser/CreateCommand.hpp"
 #include "adun/Parser/Token.hpp"
 #include "adun/Parser/Utils.hpp"
+#include "adun/Parser/ValueExpr.hpp"
 #include "adun/Parser/VariableExpr.hpp"
 #include "adun/Value.hpp"
 #include <fmt/base.h>
@@ -15,21 +16,31 @@
 namespace adun {
 
 static constexpr auto s_BinopPrecedence{
-  frozen::make_unordered_map<TokenKind, int32_t>(
-      { { TokenKind::Plus, 20 },
-        { TokenKind::Minus, 20 },
-        { TokenKind::Star, 40 },
-        { TokenKind::Div, 40 },
-        { TokenKind::Less, 10 } })
+  frozen::make_unordered_map<TokenKind, int32_t>({
+      { TokenKind::Plus, 20 },
+      { TokenKind::Minus, 20 },
+      { TokenKind::Star, 40 },
+      { TokenKind::Div, 40 },
+      { TokenKind::Less, 20 },
+      { TokenKind::LessEqual, 20 },
+      { TokenKind::Greater, 20 },
+      { TokenKind::GreaterEqual, 20 },
+      { TokenKind::Equals, 20 },
+      { TokenKind::Or, 10 },
+      { TokenKind::And, 10 },
+      { TokenKind::Xor, 10 },
+  })
 };
 
 template <typename... Args>
-static void emitError(Token around,
+static void emitError(const Token& around,
                       const fmt::format_string<Args...>& msg,
                       Args&&... args) {
-  fmt::print(stderr, fmt::fg(fmt::color::red), "Error around: '{}'\n",
-             around.getStringView());
-  fmt::println(stderr, msg, std::forward<Args>(args)...);
+  std::string str{};
+  str += fmt::format(fmt::fg(fmt::color::red), "Error around: '{}'\n",
+                     around.getStringView());
+  str += fmt::format(msg, std::forward<Args>(args)...);
+  throw ParserException{ str };
 }
 
 auto Parser::buildAST() -> Ref<ast::Command> {
@@ -37,8 +48,14 @@ auto Parser::buildAST() -> Ref<ast::Command> {
   case TokenKind::KW_CREATE:
     m_ASTRoot = parseCreateCommand();
     break;
+  case TokenKind::KW_INSERT:
+    m_ASTRoot = parseInsertCommand();
+    break;
+  case TokenKind::KW_SELECT:
+    m_ASTRoot = parseSelectCommand();
+    break;
   default:
-    m_ASTRoot = invalidNode();
+    emitError(curTok(), "Expected command name");
   }
   return m_ASTRoot;
 }
@@ -48,20 +65,17 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
   consumeToken();
   if (curTok().isNot(TokenKind::KW_TABLE)) {
     emitError(curTok(), "Expected 'TABLE'");
-    return invalidNode();
   }
   consumeToken();
 
   if (curTok().isNot(TokenKind::Identifier)) {
     emitError(curTok(), "Expected table name");
-    return invalidNode();
   }
   std::string tableName{ curTok().getStringView() };
   consumeToken();
 
   if (curTok().isNot(TokenKind::LParen)) {
     emitError(curTok(), "Expected '('");
-    return invalidNode();
   }
   consumeToken();
 
@@ -69,15 +83,117 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
   auto scheme{ parseScheme() };
   if (scheme.empty()) {
     emitError(schemeTok, "Failed to parse table scheme");
-    return invalidNode();
   }
 
   if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
     emitError(curTok(), "Expected end of query");
-    return invalidNode();
   }
   consumeToken();
-  return makeUnique<ast::CreateCommand>(tableName, scheme);
+  return makeUnique<ast::CreateCommand>(std::move(tableName),
+                                        std::move(scheme));
+}
+
+auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
+  adun_assert(curTok().is(TokenKind::KW_INSERT), "Expected 'INSERT'");
+  consumeToken();
+  if (curTok().isNot(TokenKind::LParen)) {
+    emitError(curTok(), "Expected '('");
+  }
+  consumeToken();
+
+  std::vector<std::pair<std::string, Value>> assignments;
+  while (curTok().isNot(TokenKind::RParen)) {
+    if (curTok().isNot(TokenKind::Identifier)) {
+      emitError(curTok(), "Expected column name");
+    }
+    std::string columnName{ curTok().getStringView() };
+    consumeToken();
+
+    if (curTok().isNot(TokenKind::Equals)) {
+      emitError(curTok(), "Expected '='");
+    }
+    consumeToken();
+
+    auto value{ parseValueExpr()->getValue() };
+    if (value.isEmpty() || value.isNull()) {
+      emitError(curTok(), "Failed to parse value");
+    }
+
+    if (curTok().is(TokenKind::Comma)) {
+      consumeToken();
+    } else if (curTok().is(TokenKind::RParen)) {
+      // will be consumed later
+    } else {
+      emitError(curTok(), "Expected ','");
+    }
+
+    assignments.emplace_back(columnName, value);
+  }
+  consumeToken();
+
+  if (curTok().isNot(TokenKind::KW_INTO)) {
+    emitError(curTok(), "Expected 'INTO'");
+  }
+  consumeToken();
+
+  if (curTok().isNot(TokenKind::Identifier)) {
+    emitError(curTok(), "Expected tableName");
+  }
+  std::string tableName{ curTok().getStringView() };
+  consumeToken();
+
+  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
+    emitError(curTok(), "Expected end of query");
+  }
+  consumeToken();
+
+  return makeUnique<ast::InsertCommand>(std::move(tableName),
+                                        std::move(assignments));
+}
+
+auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
+  adun_assert(curTok().is(TokenKind::KW_SELECT), "Expected 'SELECT'");
+  consumeToken();
+
+  std::vector<std::string> columns;
+  if (!curTok().is(TokenKind::Identifier)) {
+    emitError(curTok(), "Expected column name");
+  }
+  columns.emplace_back(curTok().getStringView());
+  consumeToken();
+  while (curTok().is(TokenKind::Comma)) {
+    consumeToken();
+    if (!curTok().is(TokenKind::Identifier)) {
+      emitError(curTok(), "Expected column name");
+    }
+    columns.emplace_back(curTok().getStringView());
+    consumeToken();
+  }
+
+  if (curTok().isNot(TokenKind::KW_FROM)) {
+    emitError(curTok(), "Expected 'FROM'");
+  }
+  consumeToken();
+
+  if (curTok().isNot(TokenKind::Identifier)) {
+    emitError(curTok(), "Expected table name");
+  }
+  std::string tableName{ curTok().getStringView() };
+  consumeToken();
+
+  if (curTok().isNot(TokenKind::KW_WHERE)) {
+    emitError(curTok(), "Expected 'WHERE'");
+  }
+  consumeToken();
+
+  auto cond{ parseExpression() };
+  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
+    emitError(curTok(), "Expected end of query");
+  }
+  consumeToken();
+
+  return makeUnique<ast::SelectCommand>(
+      std::move(columns), std::move(tableName), std::move(cond));
 }
 
 auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
@@ -96,6 +212,8 @@ auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
     value = curTok().getLiteralValue<ByteArray>();
     break;
   default:
+    emitError(curTok(), "Expected value expression");
+    return invalidNode();
     break;
   }
   auto token{ curTok() };
@@ -109,12 +227,10 @@ auto Parser::parseParenExpr() -> Unique<ast::ExpressionNode> {
 
   auto result{ parseExpression() };
   if (!result) {
-    return invalidNode();
   }
 
   if (curTok().isNot(TokenKind::RParen)) {
-    // emitError(curTok(), "Expected ')'");
-    return invalidNode();
+    emitError(curTok(), "Expected ')'");
   }
 
   consumeToken();
@@ -133,7 +249,6 @@ auto Parser::parseIdentifierExpr() -> Unique<ast::ExpressionNode> {
         std::string{ identifierTok.getStringView() });
   }
 
-  /// @todo parse function call
   return invalidNode();
 }
 
@@ -144,12 +259,10 @@ auto Parser::parseCompoundExpression()
     return parseIdentifierExpr();
   case TokenKind::LParen:
     return parseParenExpr();
-  case TokenKind::NumericLiteral:
-    return parseValueExpr();
   default:
-    // emitError(curTok(), "Expected value expression");
-    return invalidNode();
+    return parseValueExpr();
   }
+  return invalidNode();
 }
 
 auto Parser::parseExpression() -> std::unique_ptr<ast::ExpressionNode> {
@@ -226,8 +339,8 @@ auto Parser::parseTypename() -> ValueType {
   }
 }
 
-auto Parser::parseScheme() -> Table::Header {
-  Table::Header scheme;
+auto Parser::parseScheme() -> Table::Scheme {
+  Table::Scheme scheme;
   while (curTok().isNot(TokenKind::RParen)) {
     if (curTok().isNot(TokenKind::Identifier)) {
       emitError(curTok(), "Expected column name");

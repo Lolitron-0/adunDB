@@ -1,9 +1,15 @@
 #pragma once
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Result.hpp"
+#include <stdexcept>
 
 namespace adun {
 class Database;
+
+class CommandException : public std::runtime_error {
+public:
+  using std::runtime_error::runtime_error;
+};
 
 namespace ast {
 

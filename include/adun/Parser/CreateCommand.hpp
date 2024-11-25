@@ -5,9 +5,9 @@
 
 namespace adun::ast {
 
-class CreateCommand : public Command {
+class CreateCommand final : public Command {
 public:
-  CreateCommand(std::string tableName, Table::Header scheme)
+  CreateCommand(std::string tableName, Table::Scheme scheme)
       : Command{ NodeKind::CreateCommand },
         m_TableName{ std::move(tableName) },
         m_Scheme{ std::move(scheme) } {
@@ -17,7 +17,7 @@ public:
 
 private:
   std::string m_TableName;
-  Table::Header m_Scheme;
+  Table::Scheme m_Scheme;
 };
 
 } // namespace adun::ast

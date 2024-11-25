@@ -5,7 +5,8 @@
 #include <array>
 #include <cctype>
 #include <cul/cul.hpp>
-#include <iterator>
+#include <fmt/color.h>
+#include <fmt/format.h>
 #include <string_view>
 
 namespace adun {
@@ -63,6 +64,17 @@ static constexpr std::array<std::string_view, detail::CountPunctuators_v>
         });
 #undef PUNCT
 
+template <typename... Args>
+static void emitError(const SourceIt& around, size_t length,
+                      const fmt::format_string<Args...>& msg,
+                      Args&&... args) {
+  std::string str{};
+  str += fmt::format(fmt::fg(fmt::color::red), "Error around: '{}'\n",
+                     std::string_view{ around, around + length });
+  str += fmt::format(msg, std::forward<Args>(args)...);
+  throw LexerFatalError{ str };
+}
+
 static auto decodeEscapedChar(const SourceIt& pos) -> char {
   switch (*pos) {
   case 'a':
@@ -84,7 +96,7 @@ static auto decodeEscapedChar(const SourceIt& pos) -> char {
   case '\\':
     return '\\';
   default:
-    // emitWarning(pos, 1, "Invalid escape sequence, ignoring '\\'");
+    emitError(pos, 1, "Invalid escape sequence, ignoring '\\'");
     return *pos;
   }
 }
@@ -147,8 +159,7 @@ auto Lexer::lexStringLiteral(SourceIt& pos) -> bool {
   if (*pos == '"') {
     ++pos;
   } else {
-    // emitError(start, value.length(), "Unclosed string literal");
-    throw LexerFatalError();
+    emitError(start, value.length(), "Unclosed string literal");
     return false;
   }
   m_Tokens->emplace_back(TokenKind::StringLiteral, start,
@@ -183,26 +194,26 @@ void Lexer::lex(const std::string& query) {
 
   while (pos != query.cend()) {
 
-    // Line comments
-    if (startsWith(pos, "//")) {
-      pos += 2;
-      while (*pos != '\n') {
-        ++pos;
-      }
-    }
-
-    // Block comments
-    if (startsWith(pos, "/*")) {
-      pos += 2;
-      auto blockCommentEnd{ query.find_first_of(
-          "*/", std::distance(query.cbegin(), pos)) };
-      if (blockCommentEnd == std::string::npos) {
-        // emitError(pos, 2, "Unterminated block comment");
-      }
-      pos += static_cast<SourceIt::difference_type>(
-          blockCommentEnd - std::distance(query.cbegin(), pos) + 2);
-      continue;
-    }
+    // // Line comments
+    // if (startsWith(pos, "//")) {
+    //   pos += 2;
+    //   while (*pos != '\n') {
+    //     ++pos;
+    //   }
+    // }
+    //
+    // // Block comments
+    // if (startsWith(pos, "/*")) {
+    //   pos += 2;
+    //   auto blockCommentEnd{ query.find_first_of(
+    //       "*/", std::distance(query.cbegin(), pos)) };
+    //   if (blockCommentEnd == std::string::npos) {
+    //     // emitError(pos, 2, "Unterminated block comment");partitioned
+    //   }
+    //   pos += static_cast<SourceIt::difference_type>(
+    //       blockCommentEnd - std::distance(query.cbegin(), pos) + 2);
+    //   continue;
+    // }
 
     // Newlines and spaces
     if (*pos == '\n' || *pos == ' ') {
@@ -230,8 +241,7 @@ void Lexer::lex(const std::string& query) {
       continue;
     }
 
-    // emitError(pos, 1, "Unknown token");
-    throw LexerFatalError();
+    emitError(pos, 1, "Unknown token");
   }
 
   m_Tokens->emplace_back(TokenKind::Eof, pos, 0);

@@ -22,6 +22,8 @@ set(SOURCES
     src/Parser/ExpressionNode.cpp
     src/Parser/BinOpExpr.cpp
     src/Parser/CreateCommand.cpp
+    src/Parser/InsertCommand.cpp
+    src/Parser/SelectCommand.cpp
     src/Parser/Utils.cpp)
 
 add_library(${PROJECT_NAME} ${SOURCES})
