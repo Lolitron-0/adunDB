@@ -1,13 +1,21 @@
 #pragma once
+#include "adun/Exceptions.hpp"
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Parser/CreateCommand.hpp"
 #include "adun/Parser/ExpressionNode.hpp"
+#include "adun/Parser/InsertCommand.hpp"
 #include "adun/Parser/Lexer.hpp"
+#include "adun/Parser/SelectCommand.hpp"
 #include "adun/Parser/ValueExpr.hpp"
 #include "adun/Value.hpp"
 #include <cstddef>
 
 namespace adun {
+
+class ParserException : public DatabaseException {
+public:
+  using DatabaseException::DatabaseException;
+};
 
 class Parser {
 public:
@@ -25,6 +33,8 @@ public:
 
 private:
   auto parseCreateCommand() -> Unique<ast::CreateCommand>;
+  auto parseInsertCommand() -> Unique<ast::InsertCommand>;
+  auto parseSelectCommand() -> Unique<ast::SelectCommand>;
   auto parseValueExpr() -> Unique<ast::ValueExpr>;
   auto parseParenExpr() -> Unique<ast::ExpressionNode>;
   auto parseIdentifierExpr() -> Unique<ast::ExpressionNode>;
@@ -34,7 +44,7 @@ private:
                      int32_t prevPrecedence = 0)
       -> Unique<ast::ExpressionNode>;
   auto parseTypename() -> ValueType;
-  auto parseScheme() -> Table::Header;
+  auto parseScheme() -> Table::Scheme;
 
   [[nodiscard]] auto isFunctionDecl() const -> bool;
 
