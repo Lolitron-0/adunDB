@@ -3,9 +3,6 @@
 
 namespace adun {
 
-auto startsWith(const SourceIt& pos, std::string_view prefix) -> bool {
-}
-
 void skipSpacesSince(SourceIt& pos) {
   while (*pos == ' ') {
     ++pos;
