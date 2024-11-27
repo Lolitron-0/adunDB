@@ -276,7 +276,7 @@ void Lexer::lex(const std::string& query) {
 
 auto Lexer::startsWith(const SourceIt& pos,
                        std::string_view prefix) -> bool {
-  if (std::distance(m_QueryStart, pos) + prefix.length() >
+  if (std::distance(m_QueryStart, pos) + prefix.length() >=
       m_QueryLength) {
     return false;
   }
