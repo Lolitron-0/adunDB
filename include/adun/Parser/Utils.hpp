@@ -25,10 +25,6 @@ auto makeUnique(Args&&... args) -> Unique<T> {
   return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-void skipSpacesSince(SourceIt& pos);
-
-auto consumeIdent(SourceIt& pos) -> std::string_view;
-
 template <typename T, size_t N>
 constexpr auto sortConstexpr(std::array<T, N> arr,
                              bool (*less)(const std::decay_t<T>&,

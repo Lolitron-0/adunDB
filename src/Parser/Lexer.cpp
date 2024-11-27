@@ -276,10 +276,39 @@ void Lexer::lex(const std::string& query) {
 
 auto Lexer::startsWith(const SourceIt& pos,
                        std::string_view prefix) -> bool {
-  if (std::distance(m_QueryStart, pos) + prefix.length() >=
+  if (std::distance(m_QueryStart, pos) + prefix.length() >
       m_QueryLength) {
     return false;
   }
   return std::equal(prefix.begin(), prefix.end(), pos);
 }
+
+void Lexer::skipSpacesSince(SourceIt& pos) {
+  while (*pos == ' ') {
+    ++pos;
+    if (std::distance(m_QueryStart, pos) >=
+        m_QueryLength) {
+      return;    
+    }
+  }
+}
+
+auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
+  size_t length{ 0 };
+  auto start{ pos };
+
+  if (!std::isalpha(*pos) && *pos != '_') {
+    return {};
+  }
+
+  while (std::isalnum(*pos) || *pos == '_') {
+    ++pos;
+    ++length;
+    if (std::distance(m_QueryStart, pos)+1 >= m_QueryLength) {
+      break;
+    }
+  }
+  return std::string_view{ start, start + length };
+}
+
 } // namespace adun

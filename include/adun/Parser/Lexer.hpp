@@ -30,6 +30,9 @@ private:
   auto lexPunctuator(SourceIt& pos) -> bool;
 
   auto startsWith(const SourceIt& pos, std::string_view prefix) -> bool;
+  void skipSpacesSince(SourceIt& pos);
+
+  auto consumeIdent(SourceIt& pos) -> std::string_view;
 
   Ref<TokenList> m_Tokens;
   size_t m_QueryLength;
