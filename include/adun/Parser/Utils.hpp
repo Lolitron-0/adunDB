@@ -25,8 +25,6 @@ auto makeUnique(Args&&... args) -> Unique<T> {
   return std::make_unique<T>(std::forward<Args>(args)...);
 }
 
-auto startsWith(const SourceIt& pos, std::string_view prefix) -> bool;
-
 void skipSpacesSince(SourceIt& pos);
 
 auto consumeIdent(SourceIt& pos) -> std::string_view;

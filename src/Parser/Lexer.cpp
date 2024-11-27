@@ -8,6 +8,7 @@
 #include <cul/cul.hpp>
 #include <fmt/color.h>
 #include <fmt/format.h>
+#include <iterator>
 #include <string_view>
 
 namespace adun {
@@ -235,7 +236,9 @@ Lexer::Lexer()
 }
 
 void Lexer::lex(const std::string& query) {
+  m_QueryLength = query.size();
   SourceIt pos{ query.cbegin() };
+  m_QueryStart = pos;
 
   while (pos != query.cend()) {
 
@@ -271,4 +274,12 @@ void Lexer::lex(const std::string& query) {
   m_Tokens->emplace_back(TokenKind::Eof, pos, 0);
 }
 
+auto Lexer::startsWith(const SourceIt& pos,
+                       std::string_view prefix) -> bool {
+  if (std::distance(m_QueryStart, pos) + prefix.length() >
+      m_QueryLength) {
+    return false;
+  }
+  return std::equal(prefix.begin(), prefix.end(), pos);
+}
 } // namespace adun

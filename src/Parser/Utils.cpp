@@ -4,7 +4,6 @@
 namespace adun {
 
 auto startsWith(const SourceIt& pos, std::string_view prefix) -> bool {
-  return std::equal(prefix.begin(), prefix.end(), pos);
 }
 
 void skipSpacesSince(SourceIt& pos) {

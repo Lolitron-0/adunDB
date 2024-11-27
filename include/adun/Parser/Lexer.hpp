@@ -29,7 +29,11 @@ private:
   auto lexStringLiteral(SourceIt& pos) -> bool;
   auto lexPunctuator(SourceIt& pos) -> bool;
 
+  auto startsWith(const SourceIt& pos, std::string_view prefix) -> bool;
+
   Ref<TokenList> m_Tokens;
+  size_t m_QueryLength;
+  SourceIt m_QueryStart;
 };
 
 } // namespace adun
