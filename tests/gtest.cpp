@@ -188,5 +188,6 @@ TEST(Database, Select) {
   // syntax errors
   EXPECT_THROW(db.execute(R"(SELECT * test;)"), ParserException);
   EXPECT_THROW(db.execute(R"(select * from ;)"), ParserException);
-  EXPECT_THROW(db.execute(R"(select * from test something_else;)"), ParserException);
+  EXPECT_THROW(db.execute(R"(select * from test something_else;)"),
+               ParserException);
 }
