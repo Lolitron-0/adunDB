@@ -4,7 +4,9 @@
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Parser/BinOpExpr.hpp"
 #include "adun/Parser/CreateCommand.hpp"
+#include "adun/Parser/ExpressionNode.hpp"
 #include "adun/Parser/Token.hpp"
+#include "adun/Parser/UnaryOpExpr.hpp"
 #include "adun/Parser/Utils.hpp"
 #include "adun/Parser/ValueExpr.hpp"
 #include "adun/Parser/VariableExpr.hpp"
@@ -21,14 +23,14 @@ static constexpr auto s_BinopPrecedence{
       { TokenKind::Minus, 20 },
       { TokenKind::Star, 40 },
       { TokenKind::Div, 40 },
-      { TokenKind::Less, 20 },
-      { TokenKind::LessEqual, 20 },
-      { TokenKind::Greater, 20 },
-      { TokenKind::GreaterEqual, 20 },
-      { TokenKind::Equals, 20 },
-      { TokenKind::Or, 10 },
-      { TokenKind::And, 10 },
-      { TokenKind::Xor, 10 },
+      { TokenKind::Less, 10 },
+      { TokenKind::LessEqual, 10 },
+      { TokenKind::Greater, 10 },
+      { TokenKind::GreaterEqual, 10 },
+      { TokenKind::Equals, 10 },
+      { TokenKind::Or, 9 },
+      { TokenKind::And, 9 },
+      { TokenKind::Xor, 9 },
   })
 };
 
@@ -45,13 +47,13 @@ static void emitError(const Token& around,
 
 auto Parser::buildAST() -> Ref<ast::Command> {
   switch (curTok().getKind()) {
-  case TokenKind::KW_CREATE:
+  case TokenKind::KW_create:
     m_ASTRoot = parseCreateCommand();
     break;
-  case TokenKind::KW_INSERT:
+  case TokenKind::KW_insert:
     m_ASTRoot = parseInsertCommand();
     break;
-  case TokenKind::KW_SELECT:
+  case TokenKind::KW_select:
     m_ASTRoot = parseSelectCommand();
     break;
   default:
@@ -61,9 +63,9 @@ auto Parser::buildAST() -> Ref<ast::Command> {
 }
 
 auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
-  adun_assert(curTok().is(TokenKind::KW_CREATE), "Expected 'CREATE'");
+  adun_assert(curTok().is(TokenKind::KW_create), "Expected 'CREATE'");
   consumeToken();
-  if (curTok().isNot(TokenKind::KW_TABLE)) {
+  if (curTok().isNot(TokenKind::KW_table)) {
     emitError(curTok(), "Expected 'TABLE'");
   }
   consumeToken();
@@ -85,6 +87,7 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
     emitError(schemeTok, "Failed to parse table scheme");
   }
 
+  // RParen already consumed by parseScheme
   if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
     emitError(curTok(), "Expected end of query");
   }
@@ -94,7 +97,7 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
 }
 
 auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
-  adun_assert(curTok().is(TokenKind::KW_INSERT), "Expected 'INSERT'");
+  adun_assert(curTok().is(TokenKind::KW_insert), "Expected 'INSERT'");
   consumeToken();
   if (curTok().isNot(TokenKind::LParen)) {
     emitError(curTok(), "Expected '('");
@@ -115,9 +118,6 @@ auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
     consumeToken();
 
     auto value{ parseValueExpr()->getValue() };
-    if (value.isEmpty() || value.isNull()) {
-      emitError(curTok(), "Failed to parse value");
-    }
 
     if (curTok().is(TokenKind::Comma)) {
       consumeToken();
@@ -131,7 +131,7 @@ auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
   }
   consumeToken();
 
-  if (curTok().isNot(TokenKind::KW_INTO)) {
+  if (curTok().isNot(TokenKind::KW_into)) {
     emitError(curTok(), "Expected 'INTO'");
   }
   consumeToken();
@@ -152,25 +152,12 @@ auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
 }
 
 auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
-  adun_assert(curTok().is(TokenKind::KW_SELECT), "Expected 'SELECT'");
+  adun_assert(curTok().is(TokenKind::KW_select), "Expected 'SELECT'");
   consumeToken();
 
-  std::vector<std::string> columns;
-  if (!curTok().is(TokenKind::Identifier)) {
-    emitError(curTok(), "Expected column name");
-  }
-  columns.emplace_back(curTok().getStringView());
-  consumeToken();
-  while (curTok().is(TokenKind::Comma)) {
-    consumeToken();
-    if (!curTok().is(TokenKind::Identifier)) {
-      emitError(curTok(), "Expected column name");
-    }
-    columns.emplace_back(curTok().getStringView());
-    consumeToken();
-  }
+  auto columns{ parseColumnNames() };
 
-  if (curTok().isNot(TokenKind::KW_FROM)) {
+  if (curTok().isNot(TokenKind::KW_from)) {
     emitError(curTok(), "Expected 'FROM'");
   }
   consumeToken();
@@ -181,12 +168,13 @@ auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
   std::string tableName{ curTok().getStringView() };
   consumeToken();
 
-  if (curTok().isNot(TokenKind::KW_WHERE)) {
-    emitError(curTok(), "Expected 'WHERE'");
+  Unique<ast::ExpressionNode> cond;
+  if (curTok().isNot(TokenKind::KW_where)) {
+    cond = makeUnique<ast::ValueExpr>(true);
+  } else {
+    consumeToken();
+    cond = parseExpression();
   }
-  consumeToken();
-
-  auto cond{ parseExpression() };
   if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
     emitError(curTok(), "Expected end of query");
   }
@@ -198,6 +186,7 @@ auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
 
 auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
   Value value;
+  Unique<ast::ExpressionNode> compoundResult;
   switch (curTok().getKind()) {
   case TokenKind::NumericLiteral:
     value = curTok().getLiteralValue<int32_t>();
@@ -205,11 +194,17 @@ auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
   case TokenKind::StringLiteral:
     value = curTok().getLiteralValue<std::string>();
     break;
-  case TokenKind::BoolLiteral:
-    value = curTok().getLiteralValue<bool>();
+  case TokenKind::KW_true:
+    value = true;
+    break;
+  case TokenKind::KW_false:
+    value = false;
     break;
   case TokenKind::HexLiteral:
     value = curTok().getLiteralValue<ByteArray>();
+    break;
+  case TokenKind::KW_null:
+    value = curTok().getLiteralValue();
     break;
   default:
     emitError(curTok(), "Expected value expression");
@@ -254,11 +249,26 @@ auto Parser::parseIdentifierExpr() -> Unique<ast::ExpressionNode> {
 
 auto Parser::parseCompoundExpression()
     -> std::unique_ptr<ast::ExpressionNode> {
+  Unique<ast::ExpressionNode> compoundResult;
   switch (curTok().getKind()) {
   case TokenKind::Identifier:
     return parseIdentifierExpr();
   case TokenKind::LParen:
     return parseParenExpr();
+  case TokenKind::Minus:
+    consumeToken();
+    return makeUnique<ast::UnaryOpExpr>(parseValueExpr(),
+                                        TokenKind::Minus);
+  case TokenKind::Pipe:
+    consumeToken();
+    compoundResult =
+        makeUnique<ast::UnaryOpExpr>(parseExpression(), TokenKind::Pipe);
+    if (curTok().isNot(TokenKind::Pipe)) {
+      emitError(curTok(), "Expected closing '|'");
+      return invalidNode();
+    }
+    consumeToken();
+    return compoundResult;
   default:
     return parseValueExpr();
   }
@@ -322,16 +332,16 @@ auto Parser::lookahead(uint32_t offset) const -> const Token& {
 
 auto Parser::parseTypename() -> ValueType {
   switch (curTok().getKind()) {
-  case TokenKind::KW_INTEGER:
+  case TokenKind::KW_integer:
     consumeToken();
     return ValueType::Integer;
-  case TokenKind::KW_STRING:
+  case TokenKind::KW_string:
     consumeToken();
     return ValueType::String;
-  case TokenKind::KW_BOOL:
+  case TokenKind::KW_bool:
     consumeToken();
     return ValueType::Boolean;
-  case TokenKind::KW_BYTE:
+  case TokenKind::KW_byte:
     consumeToken();
     return ValueType::Binary;
   default:
@@ -347,6 +357,10 @@ auto Parser::parseScheme() -> Table::Scheme {
       return {};
     }
     std::string columnName{ curTok().getStringView() };
+    if (scheme.contains(columnName)) {
+      emitError(curTok(), "Duplicate column name");
+      return {};
+    }
     consumeToken();
 
     auto columnType{ parseTypename() };
@@ -361,15 +375,15 @@ auto Parser::parseScheme() -> Table::Scheme {
     while (curTok().isNot(TokenKind::Comma) &&
            curTok().isNot(TokenKind::RParen)) {
       switch (curTok().getKind()) {
-      case TokenKind::KW_AUTOINCREMENT:
+      case TokenKind::KW_autoincrement:
         columnModifiers |= Column::Modifier::AutoIncrement;
         consumeToken();
         break;
-      case TokenKind::KW_UNIQUE:
+      case TokenKind::KW_unique:
         columnModifiers |= Column::Modifier::Unique;
         consumeToken();
         break;
-      case TokenKind::KW_DEFAULT:
+      case TokenKind::KW_default:
         columnModifiers |= Column::Modifier::HasDefault;
         defaultKWTok = curTok();
         consumeToken();
@@ -409,4 +423,28 @@ auto Parser::parseScheme() -> Table::Scheme {
   return scheme;
 }
 
+auto Parser::parseColumnNames() -> std::vector<std::string> {
+  std::vector<std::string> columns;
+
+  if (curTok().is(TokenKind::Star)) {
+    consumeToken();
+    return columns;
+  }
+
+  if (!curTok().is(TokenKind::Identifier)) {
+    emitError(curTok(), "Expected column name");
+  }
+  columns.emplace_back(curTok().getStringView());
+  consumeToken();
+  while (curTok().is(TokenKind::Comma)) {
+    consumeToken();
+    if (!curTok().is(TokenKind::Identifier)) {
+      emitError(curTok(), "Expected column name");
+    }
+    columns.emplace_back(curTok().getStringView());
+    consumeToken();
+  }
+
+  return columns;
+}
 } // namespace adun

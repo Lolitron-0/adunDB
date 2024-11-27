@@ -92,7 +92,7 @@ public:
   template <internal::IsDBValue T>
   /* implicit */ Value(T&& value) // NOLINT
       : m_Data{ std::forward<T>(value) },
-        m_Type{ internal::TypeToEnumMap<T>::value } {
+        m_Type{ internal::TypeToEnumMap<std::remove_cvref_t<T>>::value } {
   }
 
   explicit Value(ValueType type)
@@ -182,6 +182,13 @@ public:
     if (std::holds_alternative<int32_t>(m_Data) &&
         std::holds_alternative<int32_t>(other.m_Data)) {
       return std::get<int32_t>(m_Data) - std::get<int32_t>(other.m_Data);
+    }
+    throw ValueOperatorException{};
+  }
+
+  auto operator-() const -> Value {
+    if (std::holds_alternative<int32_t>(m_Data)) {
+      return std::get<int32_t>(m_Data) * -1;
     }
     throw ValueOperatorException{};
   }

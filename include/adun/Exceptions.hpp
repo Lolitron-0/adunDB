@@ -13,4 +13,9 @@ protected:
   using DatabaseException::DatabaseException;
 };
 
+class ParserException : public DatabaseException {
+public:
+  using DatabaseException::DatabaseException;
+};
+
 } // namespace adun

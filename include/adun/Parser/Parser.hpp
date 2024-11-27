@@ -12,11 +12,6 @@
 
 namespace adun {
 
-class ParserException : public DatabaseException {
-public:
-  using DatabaseException::DatabaseException;
-};
-
 class Parser {
 public:
   explicit Parser(const Ref<TokenList>& tokenList)
@@ -45,6 +40,7 @@ private:
       -> Unique<ast::ExpressionNode>;
   auto parseTypename() -> ValueType;
   auto parseScheme() -> Table::Scheme;
+  auto parseColumnNames() -> std::vector<std::string>;
 
   [[nodiscard]] auto isFunctionDecl() const -> bool;
 

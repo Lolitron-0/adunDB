@@ -18,7 +18,9 @@ void Token::setKind(TokenKind kind) {
 }
 
 auto Token::getStringView() const -> std::string_view {
-  adun_assert(!is(TokenKind::Eof), "EOF token has no value");
+  if (is(TokenKind::Eof)) {
+    return "EOF";
+  }
   return std::string_view{ m_Loc, m_Loc + m_Length };
 }
 

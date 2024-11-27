@@ -21,6 +21,7 @@ set(SOURCES
     src/Parser/Parser.cpp
     src/Parser/ExpressionNode.cpp
     src/Parser/BinOpExpr.cpp
+    src/Parser/UnaryOpExpr.cpp
     src/Parser/CreateCommand.cpp
     src/Parser/InsertCommand.cpp
     src/Parser/SelectCommand.cpp

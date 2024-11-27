@@ -17,6 +17,7 @@ enum class NodeKind {
   VariableExpr,
   StringExpr,
   BinOpExpr,
+  UnaryOpExpr,
   CreateCommand,
   InsertCommand,
   SelectCommand,
