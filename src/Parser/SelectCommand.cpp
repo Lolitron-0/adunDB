@@ -12,6 +12,13 @@ auto SelectCommand::execute(Database& db) -> Result {
                                         m_TableName) };
   }
 
+  // empty means wildcard all
+  if (m_Columns.empty()) {
+    for (auto&& [name, _] : db.m_Tables.at(m_TableName).getColumnMap()) {
+      m_Columns.push_back(name);
+    }
+  }
+
   ColumnNameIndexMap columnMap;
   Selector filter{ [this, &db](auto row) {
     auto evalCond{ m_Condition->evaluate(

@@ -4,9 +4,11 @@
 #include "adun/Parser/Utils.hpp"
 #include <array>
 #include <cctype>
+#include <cstdint>
 #include <cul/cul.hpp>
 #include <fmt/color.h>
 #include <fmt/format.h>
+#include <iterator>
 #include <string_view>
 
 namespace adun {
@@ -14,9 +16,7 @@ namespace adun {
 // clang-format off
 #undef TOK
 #undef KEYWORD
-#undef PPTOK
 #define KEYWORD(t) .Case(#t, TokenKind::KW_ ## t)
-#define PPTOK(t) .Case("#" #t, TokenKind::PP_ ## t)
 static constexpr cul::BiMap s_IdentifierMapping{
   [](auto selector) {
     return selector 
@@ -110,11 +110,38 @@ auto Lexer::lexIdentifier(SourceIt& pos) -> bool {
   }
 
   Token newTok{ TokenKind::Unknown, start, ident.size() };
-  auto kind{ s_IdentifierMapping.FindByFirst(newTok.getStringView()) };
+  auto kind{ s_IdentifierMapping.FindByFirstIgnoreCase(
+      newTok.getStringView()) };
   newTok.setKind(
       kind.value_or(TokenKind::Identifier)); // either keyword or name
   m_Tokens->push_back(std::move(newTok));
   return true;
+}
+
+static auto byteArrayFromString(std::string_view str) -> ByteArray {
+  ByteArray result;
+  for (int32_t i{ static_cast<int32_t>(str.size() - 1) }; i >= 2;
+       i -= 2) {
+    uint8_t byte{};
+    if (str[i] >= '0' && str[i] <= '9') {
+      byte += str[i] - '0';
+    } else if (tolower(str[i]) >= 'a' && tolower(str[i]) <= 'f') {
+      byte += tolower(str[i]) - 'a' + 10;
+    }
+
+    if (tolower(str[i - 1]) == 'x') {
+      byte += 0;
+    } else if (str[i - 1] >= '0' && str[i - 1] <= '9') {
+      byte += (str[i - 1] - '0') * 16;
+    } else if (tolower(str[i - 1]) >= 'a' && tolower(str[i - 1]) <= 'f') {
+      byte += (tolower(str[i - 1]) - 'a' + 10) * 16;
+    }
+
+    result.push_back(byte);
+  }
+
+  std::reverse(result.begin(), result.end());
+  return result;
 }
 
 auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
@@ -124,13 +151,32 @@ auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
   }
 
   size_t length{ 1 };
+  auto firstDigit{ *pos };
   ++pos;
+  if (firstDigit == '0' && (tolower(*pos) == 'x')) {
+    ++pos;
+    ++length;
+    if (!std::isdigit(*pos) &&
+        (tolower(*pos) < 'a' || tolower(*pos) > 'f')) {
+      return false;
+    }
+    while (std::isdigit(*pos) ||
+           (tolower(*pos) >= 'a' && tolower(*pos) <= 'f')) {
+      ++pos;
+      ++length;
+    }
+    m_Tokens->emplace_back(TokenKind::HexLiteral, start, length);
+    auto literal{ byteArrayFromString(
+        std::string_view{ start, start + length }) };
+    m_Tokens->back().setLiteralValue(literal);
+    return true;
+  }
 
-  // we only support decimal integers for now
   while (std::isdigit(*pos)) {
     ++pos;
     ++length;
   }
+
   m_Tokens->emplace_back(TokenKind::NumericLiteral, start, length);
   m_Tokens->back().setLiteralValue(
       std::stoi(std::string{ start, start + length }));
@@ -190,30 +236,11 @@ Lexer::Lexer()
 }
 
 void Lexer::lex(const std::string& query) {
+  m_QueryLength = query.size();
   SourceIt pos{ query.cbegin() };
+  m_QueryStart = pos;
 
   while (pos != query.cend()) {
-
-    // // Line comments
-    // if (startsWith(pos, "//")) {
-    //   pos += 2;
-    //   while (*pos != '\n') {
-    //     ++pos;
-    //   }
-    // }
-    //
-    // // Block comments
-    // if (startsWith(pos, "/*")) {
-    //   pos += 2;
-    //   auto blockCommentEnd{ query.find_first_of(
-    //       "*/", std::distance(query.cbegin(), pos)) };
-    //   if (blockCommentEnd == std::string::npos) {
-    //     // emitError(pos, 2, "Unterminated block comment");partitioned
-    //   }
-    //   pos += static_cast<SourceIt::difference_type>(
-    //       blockCommentEnd - std::distance(query.cbegin(), pos) + 2);
-    //   continue;
-    // }
 
     // Newlines and spaces
     if (*pos == '\n' || *pos == ' ') {
@@ -245,6 +272,43 @@ void Lexer::lex(const std::string& query) {
   }
 
   m_Tokens->emplace_back(TokenKind::Eof, pos, 0);
+}
+
+auto Lexer::startsWith(const SourceIt& pos,
+                       std::string_view prefix) -> bool {
+  if (std::distance(m_QueryStart, pos) + prefix.length() >
+      m_QueryLength) {
+    return false;
+  }
+  return std::equal(prefix.begin(), prefix.end(), pos);
+}
+
+void Lexer::skipSpacesSince(SourceIt& pos) {
+  while (*pos == ' ') {
+    ++pos;
+    if (std::distance(m_QueryStart, pos) >=
+        m_QueryLength) {
+      return;    
+    }
+  }
+}
+
+auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
+  size_t length{ 0 };
+  auto start{ pos };
+
+  if (!std::isalpha(*pos) && *pos != '_') {
+    return {};
+  }
+
+  while (std::isalnum(*pos) || *pos == '_') {
+    ++pos;
+    ++length;
+    if (std::distance(m_QueryStart, pos)+1 >= m_QueryLength) {
+      break;
+    }
+  }
+  return std::string_view{ start, start + length };
 }
 
 } // namespace adun

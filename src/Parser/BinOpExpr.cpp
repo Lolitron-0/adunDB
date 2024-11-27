@@ -22,4 +22,4 @@ auto BinOpExpr::getRhs() -> Ref<ExpressionNode> {
   return m_Rhs;
 }
 
-} // namespace adun
+}  // namespace adun::ast

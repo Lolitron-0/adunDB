@@ -2,7 +2,6 @@
 #include "adun/Parser/Utils.hpp"
 #include "adun/Value.hpp"
 #include <cul/cul.hpp>
-#include <string>
 #include <string_view>
 #include <variant>
 
@@ -16,9 +15,6 @@ enum class TokenKind {
 
 class Token {
 public:
-  using LiteralValue =
-      std::variant<std::monostate, std::string, int32_t, bool, ByteArray>;
-
   Token(TokenKind kind, SourceIt loc, size_t length);
 
   [[nodiscard]] inline auto is(TokenKind kind) const -> bool {
@@ -45,7 +41,7 @@ public:
 
   template <typename T>
   void setLiteralValue(T&& value) {
-    m_LiteralValue.emplace<std::decay_t<T>>(std::forward<T>(value));
+    m_LiteralValue = Value{ std::forward<T>(value) };
   }
 
   template <typename Func>
@@ -55,7 +51,11 @@ public:
 
   template <typename T>
   auto getLiteralValue() const -> T {
-    return std::get<T>(m_LiteralValue);
+    return m_LiteralValue.get<T>();
+  }
+
+  [[nodiscard]] auto getLiteralValue() const -> Value {
+    return m_LiteralValue;
   }
 
   // clang-format off
@@ -74,7 +74,7 @@ private:
   TokenKind m_Kind;
   size_t m_Length;
   SourceIt m_Loc;
-  LiteralValue m_LiteralValue{ std::monostate{} };
+  Value m_LiteralValue;
 };
 
 } // namespace adun

@@ -6,7 +6,7 @@
 
 namespace adun::ast {
 
-class BinopException : public DatabaseException {
+class BinOpException : public DatabaseException {
   using DatabaseException::DatabaseException;
 };
 
@@ -22,7 +22,8 @@ public:
     Value lhs = m_Lhs->evaluate(row, columns);
     Value rhs = m_Rhs->evaluate(row, columns);
     if (lhs.getType() != rhs.getType()) {
-      throw BinopException{ "Binary operation of incompatible types" };
+      throw BinOpException{ "Binary operation of incompatible types: " +
+                            lhs.toString() + ", " + rhs.toString() };
     }
 
     switch (m_Op) {

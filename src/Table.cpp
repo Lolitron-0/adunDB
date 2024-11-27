@@ -14,9 +14,10 @@ Table::Table(std::string name, Scheme scheme)
     : m_Name{ std::move(name) },
       m_Header{ std::move(scheme) } {
   int i{ 0 };
-  for (auto&& [_, column] : m_Header) {
+  for (auto&& [colName, column] : m_Header) {
     adun_assert(!column.sampleValue.isEmpty(),
                 "Invalid column in scheme");
+
     column.index = i;
     i++;
   }
