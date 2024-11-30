@@ -2,6 +2,7 @@
 #include "adun/Database.hpp"
 #include "adun/Exceptions.hpp"
 #include "adun/Parser/Command.hpp"
+#include "adun/Parser/Lexer.hpp"
 #include "adun/Table.hpp"
 #include "adun/Value.hpp"
 #include <gtest/gtest.h>
@@ -92,6 +93,22 @@ TEST(Table, Select) {
                InvalidRowException);
 }
 
+TEST(Lexer, EscapeSequences) {
+  Lexer lexer;
+  EXPECT_NO_THROW(lexer.lex(R"("\a")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\b")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\f")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\n")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\r")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\t")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\v")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\0")"));
+  EXPECT_NO_THROW(lexer.lex(R"("\\")"));
+
+  // no such sequence
+  EXPECT_THROW(lexer.lex(R"("\]")"), LexerFatalError);
+}
+
 TEST(Column, Creation) {
   EXPECT_NO_THROW(Column col("a", ColMod::HasDefault));
   EXPECT_NO_THROW(Column col("a", ColMod::Unique));
@@ -177,6 +194,8 @@ TEST(Database, Select) {
       db.execute(R"(SELECT * FROM test WHERE data = 0X003F;)"));
   EXPECT_NO_THROW(db.execute(
       R"(SELECT * FROM test WHERE |name| = 3 || |"balls"| < 3;)"));
+  EXPECT_NO_THROW(db.execute(
+      R"(SELECT * FROM test WHERE |name| = 3 || |"balls"| > -3;)"));
 
   // no such table
   EXPECT_THROW(db.execute(R"(SELECT * FROM non_existent;)"),
@@ -190,4 +209,87 @@ TEST(Database, Select) {
   EXPECT_THROW(db.execute(R"(select * from ;)"), ParserException);
   EXPECT_THROW(db.execute(R"(select * from test something_else;)"),
                ParserException);
+}
+
+TEST(Result, Iterate) {
+  Database db;
+  createTestTable(db);
+  db.execute(R"(INSERT (name="Ann", age=19, data=0X003FDB) INTO test;)");
+  db.execute(R"(INSERT (name="Ann", age=19, data=0X003FDA) INTO test;)");
+  ByteArray expected{ 0x00, 0x3f, 0xdb };
+
+  auto r{ db.execute(R"(SELECT * FROM test WHERE name="Ann";)") };
+  for (const auto& row : r) {
+    EXPECT_LE(row["id"], 2);
+    EXPECT_EQ(row["age"], 19);
+    EXPECT_LE(row["data"], expected);
+  }
+
+  r = db.execute(R"(SELECT * FROM test WHERE id = 1;)");
+  for (auto it{ r.begin() }; it != r.end(); it++) {
+    EXPECT_EQ(it->get("id"), 1);
+    EXPECT_EQ(it->get("name"), "Ann");
+    EXPECT_EQ(it->get("age"), 19);
+    EXPECT_EQ(it->get("data"), expected);
+  }
+}
+
+TEST(Value, OperatorsInt) {
+  Value v1{ 5 };
+  Value v2{ 10 };
+  EXPECT_TRUE(v1 < v2);
+  EXPECT_TRUE(v1 <= v2);
+  EXPECT_FALSE(v1 == v2);
+  EXPECT_FALSE(v1 > v2);
+  EXPECT_FALSE(v1 >= v2);
+  EXPECT_EQ(v1 - v2, -5);
+  EXPECT_EQ(v1 + v2, 15);
+  EXPECT_EQ(-v1, -5);
+  EXPECT_EQ(v1 * v2, 50);
+  EXPECT_EQ(v1 / v2, 0);
+  EXPECT_EQ(v2 % v1, 0);
+  EXPECT_THROW(v2 && v1, ValueException);
+  EXPECT_THROW(v2 || v1, ValueException);
+  EXPECT_THROW(v2 ^ v1, ValueException);
+  EXPECT_THROW(!v2, ValueException);
+}
+
+TEST(Value, OperatorsString) {
+  Value v1{ "Ann" };
+  Value v2{ "Bob" };
+  EXPECT_TRUE(v1 < v2);
+  EXPECT_TRUE(v1 <= v2);
+  EXPECT_FALSE(v1 == v2);
+  EXPECT_FALSE(v1 > v2);
+  EXPECT_FALSE(v1 >= v2);
+  EXPECT_EQ(v1 + v2, "AnnBob");
+  EXPECT_THROW(v1 - v2, ValueException);
+  EXPECT_THROW(-v1, ValueException);
+  EXPECT_THROW(v1 * v2, ValueException);
+  EXPECT_THROW(v1 / v2, ValueException);
+  EXPECT_THROW(v2 % v1, ValueException);
+  EXPECT_THROW(v2 && v1, ValueException);
+  EXPECT_THROW(v2 || v1, ValueException);
+  EXPECT_THROW(v2 ^ v1, ValueException);
+}
+
+TEST(Value, OperatorsBool) {
+  Value v1{ true };
+  Value v2{ false };
+  EXPECT_TRUE(v1 > v2);
+  EXPECT_EQ(!v2, true);
+  EXPECT_EQ(!v1, false);
+  EXPECT_TRUE(v1 >= v2);
+  EXPECT_FALSE(v1 == v2);
+  EXPECT_FALSE(v1 < v2);
+  EXPECT_FALSE(v1 <= v2);
+  EXPECT_THROW(v1 + v2, ValueException);
+  EXPECT_THROW(v1 - v2, ValueException);
+  EXPECT_THROW(-v1, ValueException);
+  EXPECT_THROW(v1 * v2, ValueException);
+  EXPECT_THROW(v1 / v2, ValueException);
+  EXPECT_THROW(v2 % v1, ValueException);
+  EXPECT_FALSE(v2 && v1);
+  EXPECT_TRUE(v2 || v1);
+  EXPECT_TRUE(v2 ^ v1);
 }

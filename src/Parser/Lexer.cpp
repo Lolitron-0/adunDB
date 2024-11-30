@@ -69,8 +69,11 @@ static void emitError(const SourceIt& around, size_t length,
                       const fmt::format_string<Args...>& msg,
                       Args&&... args) {
   std::string str{};
-  str += fmt::format(fmt::fg(fmt::color::red), "Error around: '{}'\n",
-                     std::string_view{ around, around + length });
+  str += fmt::format(
+      fmt::fg(fmt::color::red), "Error around: '{}'\n",
+      std::string_view{
+          around,
+          around + static_cast<SourceIt::difference_type>(length) });
   str += fmt::format(msg, std::forward<Args>(args)...);
   throw LexerFatalError{ str };
 }
@@ -166,8 +169,9 @@ auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
       ++length;
     }
     m_Tokens->emplace_back(TokenKind::HexLiteral, start, length);
-    auto literal{ byteArrayFromString(
-        std::string_view{ start, start + length }) };
+    auto literal{ byteArrayFromString(std::string_view{
+        start,
+        start + static_cast<SourceIt::difference_type>(length) }) };
     m_Tokens->back().setLiteralValue(literal);
     return true;
   }
@@ -286,9 +290,9 @@ auto Lexer::startsWith(const SourceIt& pos,
 void Lexer::skipSpacesSince(SourceIt& pos) {
   while (*pos == ' ') {
     ++pos;
-    if (std::distance(m_QueryStart, pos) >=
+    if (static_cast<size_t>(std::distance(m_QueryStart, pos)) >=
         m_QueryLength) {
-      return;    
+      return;
     }
   }
 }
@@ -304,11 +308,14 @@ auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
   while (std::isalnum(*pos) || *pos == '_') {
     ++pos;
     ++length;
-    if (std::distance(m_QueryStart, pos)+1 >= m_QueryLength) {
+    if (static_cast<size_t>(std::distance(m_QueryStart, pos) + 1) >=
+        m_QueryLength) {
       break;
     }
   }
-  return std::string_view{ start, start + length };
+  return std::string_view{
+    start, start + static_cast<SourceIt::difference_type>(length)
+  };
 }
 
 } // namespace adun
