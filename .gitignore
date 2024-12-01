@@ -1,4 +1,5 @@
 build
+fuzz/out
 docker-build
 .cache
 compile_commands.json

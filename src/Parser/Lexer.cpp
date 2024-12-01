@@ -9,6 +9,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <iterator>
+#include <sstream>
 #include <string_view>
 
 namespace adun {
@@ -163,8 +164,9 @@ auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
         (tolower(*pos) < 'a' || tolower(*pos) > 'f')) {
       return false;
     }
-    while (std::isdigit(*pos) ||
-           (tolower(*pos) >= 'a' && tolower(*pos) <= 'f')) {
+    while (!nearEnd(pos) &&
+           (std::isdigit(*pos) ||
+            (tolower(*pos) >= 'a' && tolower(*pos) <= 'f'))) {
       ++pos;
       ++length;
     }
@@ -176,14 +178,17 @@ auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
     return true;
   }
 
-  while (std::isdigit(*pos)) {
+  while (!nearEnd(pos) && std::isdigit(*pos)) {
     ++pos;
     ++length;
   }
 
   m_Tokens->emplace_back(TokenKind::NumericLiteral, start, length);
-  m_Tokens->back().setLiteralValue(
-      std::stoi(std::string{ start, start + length }));
+  std::stringstream ss;
+  ss << std::string{ start, start + length };
+  int32_t intVal{};
+  ss >> intVal;
+  m_Tokens->back().setLiteralValue(intVal);
   return true;
 }
 
@@ -196,7 +201,7 @@ auto Lexer::lexStringLiteral(SourceIt& pos) -> bool {
   ++pos;
   std::string value{};
 
-  while (*pos != '"' && *pos != '\n') {
+  while (*pos != '"' && !nearEnd(pos)) {
     if (*pos == '\\') {
       ++pos; // consume backslash
       value += decodeEscapedChar(pos);
@@ -308,8 +313,7 @@ auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
   while (std::isalnum(*pos) || *pos == '_') {
     ++pos;
     ++length;
-    if (static_cast<size_t>(std::distance(m_QueryStart, pos) + 1) >=
-        m_QueryLength) {
+    if (nearEnd(pos)) {
       break;
     }
   }
@@ -318,4 +322,8 @@ auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
   };
 }
 
+auto Lexer::nearEnd(const SourceIt& pos) const -> bool {
+  return static_cast<size_t>(std::distance(m_QueryStart, pos) + 1) >=
+         m_QueryLength;
+}
 } // namespace adun

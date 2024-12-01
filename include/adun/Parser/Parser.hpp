@@ -6,6 +6,7 @@
 #include "adun/Parser/InsertCommand.hpp"
 #include "adun/Parser/Lexer.hpp"
 #include "adun/Parser/SelectCommand.hpp"
+#include "adun/Parser/UpdateCommand.hpp"
 #include "adun/Parser/ValueExpr.hpp"
 #include "adun/Value.hpp"
 #include <cstddef>
@@ -30,6 +31,7 @@ private:
   auto parseCreateCommand() -> Unique<ast::CreateCommand>;
   auto parseInsertCommand() -> Unique<ast::InsertCommand>;
   auto parseSelectCommand() -> Unique<ast::SelectCommand>;
+  auto parseUpdateCommand() -> Unique<ast::UpdateCommand>;
   auto parseValueExpr() -> Unique<ast::ValueExpr>;
   auto parseParenExpr() -> Unique<ast::ExpressionNode>;
   auto parseIdentifierExpr() -> Unique<ast::ExpressionNode>;
@@ -45,6 +47,10 @@ private:
   [[nodiscard]] auto isFunctionDecl() const -> bool;
 
   [[nodiscard]] auto lookahead(uint32_t offset) const -> const Token&;
+
+  void expect(TokenKind kind);
+  void expectConsume(TokenKind kind);
+  void expectConsumeEnd();
 
   [[nodiscard]] inline auto curTok() const -> const Token& {
     return *m_CurTokIter;

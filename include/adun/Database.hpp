@@ -2,6 +2,7 @@
 #include "adun/Parser/CreateCommand.hpp"
 #include "adun/Parser/InsertCommand.hpp"
 #include "adun/Parser/SelectCommand.hpp"
+#include "adun/Parser/UpdateCommand.hpp"
 #include "adun/Result.hpp"
 #include "adun/Table.hpp"
 #include <unordered_map>
@@ -17,6 +18,7 @@ public:
   friend class ast::CreateCommand;
   friend class ast::InsertCommand;
   friend class ast::SelectCommand;
+  friend class ast::UpdateCommand;
 
 private:
   std::unordered_map<std::string, Table> m_Tables;

@@ -21,6 +21,7 @@ enum class NodeKind {
   CreateCommand,
   InsertCommand,
   SelectCommand,
+  UpdateCommand,
   QueryASTRoot,
   NUM_NODES
 };

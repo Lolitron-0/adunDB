@@ -1,0 +1,1 @@
+SELECT * FROM test WHERE |name| = 3 || |"balls"| > -3;

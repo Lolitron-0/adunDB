@@ -24,7 +24,8 @@ set(SOURCES
     src/Parser/UnaryOpExpr.cpp
     src/Parser/CreateCommand.cpp
     src/Parser/InsertCommand.cpp
-    src/Parser/SelectCommand.cpp)
+    src/Parser/SelectCommand.cpp
+    src/Parser/UpdateCommand.cpp)
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
@@ -79,4 +80,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range Boost::stacktrace)
 # Tests
 if(ADUN_BUILD_TESTS)
   add_subdirectory(tests)
+  add_subdirectory(fuzz)
 endif()

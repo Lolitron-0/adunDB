@@ -30,6 +30,9 @@ public:
   auto selectRows(const Selector& filter,
                   const std::vector<std::string>& columns) -> Result;
 
+  void traverseRows(const Selector& filter,
+                    const std::function<void(Row&)>& callback);
+
   void addRow(
       const std::vector<std::pair<std::string, Value>>& assignments);
 

@@ -47,6 +47,15 @@ auto Table::selectRows(const Selector& filter,
   return Result{ std::move(rows), std::move(columnMap), rows.size() };
 }
 
+void Table::traverseRows(const Selector& filter,
+                         const std::function<void(Row&)>& callback) {
+  for (auto&& row : m_Rows) {
+    if (filter(row)) {
+      callback(row);
+    }
+  }
+}
+
 void Table::addRow(
     const std::vector<std::pair<std::string, Value>>& assignments) {
   std::vector<Value> values;

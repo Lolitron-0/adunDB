@@ -19,7 +19,6 @@ auto SelectCommand::execute(Database& db) -> Result {
     }
   }
 
-  ColumnNameIndexMap columnMap;
   Selector filter{ [this, &db](auto row) {
     auto evalCond{ m_Condition->evaluate(
         row, db.m_Tables.at(m_TableName).getColumnMap()) };
