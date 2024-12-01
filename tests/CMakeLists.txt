@@ -15,7 +15,7 @@ enable_testing()
 
 set(UNIT_PROJECT_NAME ${PROJECT_NAME}_unit)
 add_executable(${UNIT_PROJECT_NAME} gtest.cpp)
-target_link_libraries(${UNIT_PROJECT_NAME} PRIVATE ${PARENT_PROJECT_NAME})
+target_link_libraries(${UNIT_PROJECT_NAME} PRIVATE ${PARENT_PROJECT_NAME} cul)
 target_link_libraries(${UNIT_PROJECT_NAME} PRIVATE GTest::gtest_main
                                                    GTest::gtest)
 

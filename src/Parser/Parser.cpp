@@ -4,9 +4,11 @@
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Parser/BinOpExpr.hpp"
 #include "adun/Parser/CreateCommand.hpp"
+#include "adun/Parser/DeleteCommand.hpp"
 #include "adun/Parser/ExpressionNode.hpp"
 #include "adun/Parser/Token.hpp"
 #include "adun/Parser/UnaryOpExpr.hpp"
+#include "adun/Parser/UpdateCommand.hpp"
 #include "adun/Parser/Utils.hpp"
 #include "adun/Parser/ValueExpr.hpp"
 #include "adun/Parser/VariableExpr.hpp"
@@ -56,6 +58,12 @@ auto Parser::buildAST() -> Ref<ast::Command> {
   case TokenKind::KW_select:
     m_ASTRoot = parseSelectCommand();
     break;
+  case TokenKind::KW_update:
+    m_ASTRoot = parseUpdateCommand();
+    break;
+  case TokenKind::KW_delete:
+    m_ASTRoot = parseDeleteCommand();
+    break;
   default:
     emitError(curTok(), "Expected command name");
   }
@@ -65,21 +73,13 @@ auto Parser::buildAST() -> Ref<ast::Command> {
 auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
   adun_assert(curTok().is(TokenKind::KW_create), "Expected 'CREATE'");
   consumeToken();
-  if (curTok().isNot(TokenKind::KW_table)) {
-    emitError(curTok(), "Expected 'TABLE'");
-  }
-  consumeToken();
+  expectConsume(TokenKind::KW_table);
 
-  if (curTok().isNot(TokenKind::Identifier)) {
-    emitError(curTok(), "Expected table name");
-  }
+  expect(TokenKind::Identifier);
   std::string tableName{ curTok().getStringView() };
   consumeToken();
 
-  if (curTok().isNot(TokenKind::LParen)) {
-    emitError(curTok(), "Expected '('");
-  }
-  consumeToken();
+  expectConsume(TokenKind::LParen);
 
   auto schemeTok{ curTok() };
   auto scheme{ parseScheme() };
@@ -88,10 +88,7 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
   }
 
   // RParen already consumed by parseScheme
-  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
-    emitError(curTok(), "Expected end of query");
-  }
-  consumeToken();
+  expectConsumeEnd();
   return makeUnique<ast::CreateCommand>(std::move(tableName),
                                         std::move(scheme));
 }
@@ -99,30 +96,21 @@ auto Parser::parseCreateCommand() -> Unique<ast::CreateCommand> {
 auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
   adun_assert(curTok().is(TokenKind::KW_insert), "Expected 'INSERT'");
   consumeToken();
-  if (curTok().isNot(TokenKind::LParen)) {
-    emitError(curTok(), "Expected '('");
-  }
-  consumeToken();
+  expectConsume(TokenKind::LParen);
 
   std::vector<std::pair<std::string, Value>> assignments;
   while (curTok().isNot(TokenKind::RParen)) {
-    if (curTok().isNot(TokenKind::Identifier)) {
-      emitError(curTok(), "Expected column name");
-    }
+    expect(TokenKind::Identifier);
     std::string columnName{ curTok().getStringView() };
     consumeToken();
 
-    if (curTok().isNot(TokenKind::Equals)) {
-      emitError(curTok(), "Expected '='");
-    }
-    consumeToken();
+    expectConsume(TokenKind::Equals);
 
     auto value{ parseValueExpr()->getValue() };
 
     if (curTok().is(TokenKind::Comma)) {
       consumeToken();
-    } else if (curTok().is(TokenKind::RParen)) {
-      // will be consumed later
+    } else if (curTok().is(TokenKind::RParen)) { // will be consumed later
     } else {
       emitError(curTok(), "Expected ','");
     }
@@ -131,21 +119,13 @@ auto Parser::parseInsertCommand() -> Unique<ast::InsertCommand> {
   }
   consumeToken();
 
-  if (curTok().isNot(TokenKind::KW_into)) {
-    emitError(curTok(), "Expected 'INTO'");
-  }
-  consumeToken();
+  expectConsume(TokenKind::KW_into);
 
-  if (curTok().isNot(TokenKind::Identifier)) {
-    emitError(curTok(), "Expected tableName");
-  }
+  expect(TokenKind::Identifier);
   std::string tableName{ curTok().getStringView() };
   consumeToken();
 
-  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
-    emitError(curTok(), "Expected end of query");
-  }
-  consumeToken();
+  expectConsumeEnd();
 
   return makeUnique<ast::InsertCommand>(std::move(tableName),
                                         std::move(assignments));
@@ -157,14 +137,9 @@ auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
 
   auto columns{ parseColumnNames() };
 
-  if (curTok().isNot(TokenKind::KW_from)) {
-    emitError(curTok(), "Expected 'FROM'");
-  }
-  consumeToken();
+  expectConsume(TokenKind::KW_from);
 
-  if (curTok().isNot(TokenKind::Identifier)) {
-    emitError(curTok(), "Expected table name");
-  }
+  expect(TokenKind::Identifier);
   std::string tableName{ curTok().getStringView() };
   consumeToken();
 
@@ -175,13 +150,72 @@ auto Parser::parseSelectCommand() -> Unique<ast::SelectCommand> {
     consumeToken();
     cond = parseExpression();
   }
-  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
-    emitError(curTok(), "Expected end of query");
-  }
-  consumeToken();
+  expectConsumeEnd();
 
   return makeUnique<ast::SelectCommand>(
       std::move(columns), std::move(tableName), std::move(cond));
+}
+
+auto Parser::parseUpdateCommand() -> Unique<ast::UpdateCommand> {
+  adun_assert(curTok().is(TokenKind::KW_update), "Expected 'UPDATE'");
+  consumeToken();
+
+  expect(TokenKind::Identifier);
+  std::string tableName{ curTok().getStringView() };
+  consumeToken();
+
+  expectConsume(TokenKind::KW_set);
+  expectConsume(TokenKind::LParen);
+
+  std::vector<std::pair<std::string, Ref<ast::ExpressionNode>>>
+      assignments;
+  while (curTok().isNot(TokenKind::RParen)) {
+    expect(TokenKind::Identifier);
+    std::string columnName{ curTok().getStringView() };
+    consumeToken();
+
+    expectConsume(TokenKind::Equals);
+
+    Ref<ast::ExpressionNode> expr{ parseExpression() };
+
+    if (curTok().is(TokenKind::Comma)) {
+      consumeToken();
+    } else if (curTok().is(TokenKind::RParen)) {
+      // will be consumed later
+    } else {
+      emitError(curTok(), "Expected ','");
+    }
+
+    assignments.emplace_back(columnName, std::move(expr));
+  }
+  consumeToken();
+
+  expectConsume(TokenKind::KW_where);
+
+  Ref<ast::ExpressionNode> cond{ parseExpression() };
+
+  expectConsumeEnd();
+  return makeUnique<ast::UpdateCommand>(
+      std::move(tableName), std::move(assignments), std::move(cond));
+}
+
+auto Parser::parseDeleteCommand() -> Unique<ast::DeleteCommand> {
+  adun_assert(curTok().is(TokenKind::KW_delete), "Expected 'DELETE'");
+  consumeToken();
+
+  expectConsume(TokenKind::KW_from);
+
+  expect(TokenKind::Identifier);
+  std::string tableName{ curTok().getStringView() };
+  consumeToken();
+
+  expectConsume(TokenKind::KW_where);
+
+  Ref<ast::ExpressionNode> cond{ parseExpression() };
+
+  expectConsumeEnd();
+  return makeUnique<ast::DeleteCommand>(std::move(tableName),
+                                        std::move(cond));
 }
 
 auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
@@ -208,7 +242,6 @@ auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
     break;
   default:
     emitError(curTok(), "Expected value expression");
-    return invalidNode();
     break;
   }
   auto token{ curTok() };
@@ -238,13 +271,8 @@ auto Parser::parseIdentifierExpr() -> Unique<ast::ExpressionNode> {
 
   consumeToken();
 
-  if (curTok().isNot(TokenKind::LParen)) {
-    // it's a variable
-    return makeUnique<ast::VariableExpr>(
-        std::string{ identifierTok.getStringView() });
-  }
-
-  return invalidNode();
+  return makeUnique<ast::VariableExpr>(
+      std::string{ identifierTok.getStringView() });
 }
 
 auto Parser::parseCompoundExpression()
@@ -265,21 +293,16 @@ auto Parser::parseCompoundExpression()
         makeUnique<ast::UnaryOpExpr>(parseExpression(), TokenKind::Pipe);
     if (curTok().isNot(TokenKind::Pipe)) {
       emitError(curTok(), "Expected closing '|'");
-      return invalidNode();
     }
     consumeToken();
     return compoundResult;
   default:
     return parseValueExpr();
   }
-  return invalidNode();
 }
 
 auto Parser::parseExpression() -> std::unique_ptr<ast::ExpressionNode> {
   auto lhs{ parseCompoundExpression() };
-  if (!lhs) {
-    return invalidNode();
-  }
   return parseBinOpRhs(std::move(lhs));
 }
 
@@ -303,9 +326,6 @@ auto Parser::parseBinOpRhs(std::unique_ptr<ast::ExpressionNode> lhs,
     auto binOp{ curTok() };
     consumeToken();
     auto rhs{ parseCompoundExpression() };
-    if (!rhs) {
-      return invalidNode();
-    }
 
     // now: lhs binOp rhs unparsed
 
@@ -313,9 +333,6 @@ auto Parser::parseBinOpRhs(std::unique_ptr<ast::ExpressionNode> lhs,
     // if associates to the right: lhs binOp (rhs lookahead unparsed)
     if (tokPrecedence < nextPrecedence) {
       rhs = parseBinOpRhs(std::move(rhs), tokPrecedence + 1);
-      if (!rhs) {
-        return invalidNode();
-      }
     }
 
     // now: (lhs binOp rhs) lookahead unparsed
@@ -352,10 +369,7 @@ auto Parser::parseTypename() -> ValueType {
 auto Parser::parseScheme() -> Table::Scheme {
   Table::Scheme scheme;
   while (curTok().isNot(TokenKind::RParen)) {
-    if (curTok().isNot(TokenKind::Identifier)) {
-      emitError(curTok(), "Expected column name");
-      return {};
-    }
+    expect(TokenKind::Identifier);
     std::string columnName{ curTok().getStringView() };
     if (scheme.contains(columnName)) {
       emitError(curTok(), "Duplicate column name");
@@ -387,11 +401,7 @@ auto Parser::parseScheme() -> Table::Scheme {
         columnModifiers |= Column::Modifier::HasDefault;
         defaultKWTok = curTok();
         consumeToken();
-        if (curTok().isNot(TokenKind::LParen)) {
-          emitError(curTok(), "Expected '('");
-          return {};
-        }
-        consumeToken();
+        expectConsume(TokenKind::LParen);
         columnValue = parseValueExpr()->getValue();
         if (columnValue.isEmpty() || columnValue.isNull()) {
           emitError(defaultKWTok, "Expected non-empty value");
@@ -401,11 +411,7 @@ auto Parser::parseScheme() -> Table::Scheme {
           emitError(defaultKWTok, "Default value type mismatch");
           return {};
         }
-        if (curTok().isNot(TokenKind::RParen)) {
-          emitError(curTok(), "Expected ')'");
-          return {};
-        }
-        consumeToken();
+        expectConsume(TokenKind::RParen);
         break;
       default:
         emitError(curTok(), "Expected column modifier");
@@ -446,5 +452,21 @@ auto Parser::parseColumnNames() -> std::vector<std::string> {
   }
 
   return columns;
+}
+void Parser::expect(TokenKind kind) {
+  if (curTok().isNot(kind)) {
+    emitError(curTok(), "Expected: '{}'",
+              Token::TokenNameMapping.Find(kind).value());
+  }
+}
+void Parser::expectConsume(TokenKind kind) {
+  expect(kind);
+  consumeToken();
+}
+void Parser::expectConsumeEnd() {
+  if (!curTok().isOneOf(TokenKind::Semicolon, TokenKind::Eof)) {
+    emitError(curTok(), "Expected end of query");
+  }
+  consumeToken();
 }
 } // namespace adun

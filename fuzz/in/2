@@ -1,0 +1,1 @@
+INSERT (age=19, data=0X003F) INTO test;

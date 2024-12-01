@@ -1,0 +1,1 @@
+INSERT (name="Nami", age=22, data=0Xdeadbeefdeadbeefdeadbeef) INTO test;

@@ -12,11 +12,6 @@ auto Database::execute(const std::string& queryString) -> Result {
   Parser parser{ tokens };
   auto query{ parser.buildAST() };
 
-  if (parser.isASTInvalid()) {
-    // TODO: throw
-    return {};
-  }
-
   return query->execute(*this);
 }
 

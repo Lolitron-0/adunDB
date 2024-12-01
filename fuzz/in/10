@@ -1,0 +1,1 @@
+SELECT * FROM test WHERE data = 0X003F;

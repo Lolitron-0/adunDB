@@ -15,6 +15,7 @@ set(SOURCES
     src/Table.cpp
     src/Column.cpp
     src/Assert.cpp
+    src/Exceptions.cpp
     src/Database.cpp
     src/Parser/Lexer.cpp
     src/Parser/Token.cpp
@@ -25,7 +26,8 @@ set(SOURCES
     src/Parser/CreateCommand.cpp
     src/Parser/InsertCommand.cpp
     src/Parser/SelectCommand.cpp
-    src/Parser/Utils.cpp)
+    src/Parser/UpdateCommand.cpp
+    src/Parser/DeleteCommand.cpp)
 
 add_library(${PROJECT_NAME} ${SOURCES})
 
@@ -80,4 +82,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Boost::range Boost::stacktrace)
 # Tests
 if(ADUN_BUILD_TESTS)
   add_subdirectory(tests)
+  add_subdirectory(fuzz)
 endif()

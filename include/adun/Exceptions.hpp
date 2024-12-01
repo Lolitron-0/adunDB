@@ -18,4 +18,9 @@ public:
   using DatabaseException::DatabaseException;
 };
 
+class NoSuchColumnException : public DatabaseException {
+public:
+  explicit NoSuchColumnException(const std::string& name);
+};
+
 } // namespace adun

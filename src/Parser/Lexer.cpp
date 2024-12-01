@@ -9,6 +9,7 @@
 #include <fmt/color.h>
 #include <fmt/format.h>
 #include <iterator>
+#include <sstream>
 #include <string_view>
 
 namespace adun {
@@ -69,8 +70,11 @@ static void emitError(const SourceIt& around, size_t length,
                       const fmt::format_string<Args...>& msg,
                       Args&&... args) {
   std::string str{};
-  str += fmt::format(fmt::fg(fmt::color::red), "Error around: '{}'\n",
-                     std::string_view{ around, around + length });
+  str += fmt::format(
+      fmt::fg(fmt::color::red), "Error around: '{}'\n",
+      std::string_view{
+          around,
+          around + static_cast<SourceIt::difference_type>(length) });
   str += fmt::format(msg, std::forward<Args>(args)...);
   throw LexerFatalError{ str };
 }
@@ -160,26 +164,31 @@ auto Lexer::lexNumericLiteral(SourceIt& pos) -> bool {
         (tolower(*pos) < 'a' || tolower(*pos) > 'f')) {
       return false;
     }
-    while (std::isdigit(*pos) ||
-           (tolower(*pos) >= 'a' && tolower(*pos) <= 'f')) {
+    while (!nearEnd(pos) &&
+           (std::isdigit(*pos) ||
+            (tolower(*pos) >= 'a' && tolower(*pos) <= 'f'))) {
       ++pos;
       ++length;
     }
     m_Tokens->emplace_back(TokenKind::HexLiteral, start, length);
-    auto literal{ byteArrayFromString(
-        std::string_view{ start, start + length }) };
+    auto literal{ byteArrayFromString(std::string_view{
+        start,
+        start + static_cast<SourceIt::difference_type>(length) }) };
     m_Tokens->back().setLiteralValue(literal);
     return true;
   }
 
-  while (std::isdigit(*pos)) {
+  while (!nearEnd(pos) && std::isdigit(*pos)) {
     ++pos;
     ++length;
   }
 
   m_Tokens->emplace_back(TokenKind::NumericLiteral, start, length);
-  m_Tokens->back().setLiteralValue(
-      std::stoi(std::string{ start, start + length }));
+  std::stringstream ss;
+  ss << std::string{ start, start + length };
+  int32_t intVal{};
+  ss >> intVal;
+  m_Tokens->back().setLiteralValue(intVal);
   return true;
 }
 
@@ -192,7 +201,7 @@ auto Lexer::lexStringLiteral(SourceIt& pos) -> bool {
   ++pos;
   std::string value{};
 
-  while (*pos != '"' && *pos != '\n') {
+  while (*pos != '"' && !nearEnd(pos)) {
     if (*pos == '\\') {
       ++pos; // consume backslash
       value += decodeEscapedChar(pos);
@@ -286,9 +295,9 @@ auto Lexer::startsWith(const SourceIt& pos,
 void Lexer::skipSpacesSince(SourceIt& pos) {
   while (*pos == ' ') {
     ++pos;
-    if (std::distance(m_QueryStart, pos) >=
+    if (static_cast<size_t>(std::distance(m_QueryStart, pos)) >=
         m_QueryLength) {
-      return;    
+      return;
     }
   }
 }
@@ -304,11 +313,17 @@ auto Lexer::consumeIdent(SourceIt& pos) -> std::string_view {
   while (std::isalnum(*pos) || *pos == '_') {
     ++pos;
     ++length;
-    if (std::distance(m_QueryStart, pos)+1 >= m_QueryLength) {
+    if (nearEnd(pos)) {
       break;
     }
   }
-  return std::string_view{ start, start + length };
+  return std::string_view{
+    start, start + static_cast<SourceIt::difference_type>(length)
+  };
 }
 
+auto Lexer::nearEnd(const SourceIt& pos) const -> bool {
+  return static_cast<size_t>(std::distance(m_QueryStart, pos) + 1) >=
+         m_QueryLength;
+}
 } // namespace adun

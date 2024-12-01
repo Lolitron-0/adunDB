@@ -14,7 +14,7 @@ public:
   auto begin() -> ResultIterator;
   auto end() -> ResultIterator;
 
-  [[nodiscard]] auto affectedRows() const -> size_t {
+  [[nodiscard]] auto getNumAffectedRows() const -> size_t {
     return m_AffectedRows;
   }
 

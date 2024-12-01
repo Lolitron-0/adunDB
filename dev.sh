@@ -11,8 +11,8 @@ NC='\033[0m'
 cmake -S . \
 			-B build \
 			-G Ninja \
-			-DCMAKE_CXX_COMPILER=clang++ \
-			-DCMAKE_C_COMPILER=clang \
+			-DCMAKE_CXX_COMPILER=afl-clang-fast++ \
+			-DCMAKE_C_COMPILER=afl-clang-fast \
       -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -Wall -Wextra -pedantic -fprofile-instr-generate -fcoverage-mapping" \
 			-DCMAKE_BUILD_TYPE=Debug \
 			-DCMAKE_EXPORT_COMPILE_COMMANDS=1 

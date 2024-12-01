@@ -16,6 +16,11 @@ public:
     ;
   }
 
+  [[nodiscard]] auto get(size_t index) -> Value& {
+    return m_Values[index];
+    ;
+  }
+
 private:
   std::vector<Value> m_Values;
 };

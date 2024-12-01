@@ -19,6 +19,10 @@ public:
     return m_RowPtr->get(m_Columns.at(columnName));
   }
 
+  auto get(const std::string& columnName) const -> Value {
+    return this->operator[](columnName);
+  }
+
   friend class ResultIterator;
 
 private:

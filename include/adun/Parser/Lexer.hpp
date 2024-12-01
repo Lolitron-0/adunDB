@@ -33,6 +33,7 @@ private:
   void skipSpacesSince(SourceIt& pos);
 
   auto consumeIdent(SourceIt& pos) -> std::string_view;
+  [[nodiscard]] auto nearEnd(const SourceIt& pos) const -> bool;
 
   Ref<TokenList> m_Tokens;
   size_t m_QueryLength;
