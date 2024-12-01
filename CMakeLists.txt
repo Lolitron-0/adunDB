@@ -15,6 +15,7 @@ set(SOURCES
     src/Table.cpp
     src/Column.cpp
     src/Assert.cpp
+    src/Exceptions.cpp
     src/Database.cpp
     src/Parser/Lexer.cpp
     src/Parser/Token.cpp
