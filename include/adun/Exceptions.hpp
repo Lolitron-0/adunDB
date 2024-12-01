@@ -18,4 +18,11 @@ public:
   using DatabaseException::DatabaseException;
 };
 
+class NoSuchColumnException : public DatabaseException {
+public:
+  explicit NoSuchColumnException(const std::string& name)
+      : DatabaseException{ "Column " + name + " does not exist" } {
+  }
+};
+
 } // namespace adun

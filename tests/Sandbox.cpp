@@ -19,7 +19,7 @@ auto main() -> int {
       std::cout << row["id"] << ' ' << row["name"] << ' ' << row["age"]
                 << ' ' << row["data"] << '\n';
     }
-    r = db.execute("update test set (age = age+1) where name = \"Jane\"");
+    r = db.execute("delete from test where name = \"Jane\"");
     r = db.execute(R"(SELECT * FROM test; )");
     for (const auto& row : r) {
       std::cout << row["id"] << ' ' << row["name"] << ' ' << row["age"]

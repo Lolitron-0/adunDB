@@ -1,5 +1,6 @@
 #pragma once
 #include "adun/Parser/CreateCommand.hpp"
+#include "adun/Parser/DeleteCommand.hpp"
 #include "adun/Parser/InsertCommand.hpp"
 #include "adun/Parser/SelectCommand.hpp"
 #include "adun/Parser/UpdateCommand.hpp"
@@ -19,6 +20,7 @@ public:
   friend class ast::InsertCommand;
   friend class ast::SelectCommand;
   friend class ast::UpdateCommand;
+  friend class ast::DeleteCommand;
 
 private:
   std::unordered_map<std::string, Table> m_Tables;

@@ -7,13 +7,6 @@
 
 namespace adun::ast {
 
-class NoSuchColumnException : public DatabaseException {
-public:
-  explicit NoSuchColumnException(std::string name)
-      : DatabaseException{ "Column " + name + " does not exist" } {
-  }
-};
-
 class VariableExpr final : public ExpressionNode {
 public:
   explicit VariableExpr(std::string name)

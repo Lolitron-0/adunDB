@@ -1,5 +1,6 @@
 #include "adun/Table.hpp"
 #include "adun/Assert.hpp"
+#include "adun/Exceptions.hpp"
 #include "adun/Result.hpp"
 #include <fmt/format.h>
 #include <ranges>
@@ -27,6 +28,10 @@ auto Table::getName() const -> std::string {
   return m_Name;
 }
 
+auto Table::getScheme() const -> const Scheme& {
+  return m_Header;
+}
+
 auto Table::selectRows(const Selector& filter,
                        const std::vector<std::string>& columns)
     -> Result {
@@ -39,8 +44,7 @@ auto Table::selectRows(const Selector& filter,
   ColumnNameIndexMap columnMap;
   for (auto&& columnName : columns) {
     if (!m_Header.contains(columnName)) {
-      throw InvalidRowException(
-          fmt::format("No such column: {}", columnName));
+      throw NoSuchColumnException(columnName);
     }
     columnMap[columnName] = m_Header.at(columnName).index;
   }
@@ -54,6 +58,19 @@ void Table::traverseRows(const Selector& filter,
       callback(row);
     }
   }
+}
+
+auto Table::deleteRows(const Selector& filter) -> size_t {
+  size_t affectedRows{ 0 };
+  for (auto it{ m_Rows.begin() }; it != m_Rows.end();) {
+    if (filter(*it)) {
+      it = m_Rows.erase(it);
+      affectedRows++;
+    } else {
+      ++it;
+    }
+  }
+  return affectedRows;
 }
 
 void Table::addRow(
@@ -74,7 +91,7 @@ void Table::addRow(
   }
   for (const auto& [name, val] : assignments) {
     if (!m_Header.contains(name)) {
-      throw InvalidRowException(fmt::format("No such column: {}", name));
+      throw NoSuchColumnException(name);
     }
     auto column{ m_Header.at(name) };
 
@@ -82,17 +99,6 @@ void Table::addRow(
       throw InvalidRowException(fmt::format(
           "Invalid value type for value {}, expected {}", val.toString(),
           Value::typeToString(column.getType())));
-    }
-
-    // uniqueness
-    if (column.modifiers & Column::Modifier::Unique &&
-        /// @todo faster unique check
-        std::ranges::find_if(m_Rows,
-                             [&column, val = val](const auto& row) {
-                               return row.get(column.index) == val;
-                             }) != m_Rows.end()) {
-      throw InvalidRowException(
-          fmt::format("Value {} is not unique", name));
     }
 
     // auto-increment
@@ -112,6 +118,7 @@ void Table::addRow(
   }
 
   m_Rows.emplace_back(values);
+  checkConstraintsAgainst(m_Rows.back());
 }
 
 auto Table::getColumnMap() const -> const ColumnNameIndexMap& {
@@ -122,4 +129,24 @@ auto Table::getColumnMap() const -> const ColumnNameIndexMap& {
   }
   return m_ColumnMap;
 }
+
+void Table::checkConstraintsAgainst(const Row& row) const {
+  for (auto&& [columnName, column] : m_Header) {
+    if (column.modifiers & Column::Modifier::Unique &&
+        std::ranges::find_if(m_Rows,
+                             [&column, val = row.get(column.index),
+                              &row](const auto& otherRow) {
+                               // hacky, but i'm lazy to implement Key
+                               // comlumn modifier
+                               if (&row == &otherRow) {
+                                 return false;
+                               }
+                               return otherRow.get(column.index) == val;
+                             }) != m_Rows.end()) {
+      throw InvalidRowException(
+          fmt::format("Value {} is not unique", columnName));
+    }
+  }
+}
+
 } // namespace adun

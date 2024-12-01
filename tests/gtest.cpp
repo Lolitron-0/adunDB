@@ -8,7 +8,8 @@
 #include <gtest/gtest.h>
 #include <optional>
 
-using namespace adun; // NOLINT
+using namespace adun;      // NOLINT
+using namespace adun::ast; // NOLINT
 using ColMod = Column::Modifier;
 
 void createTestTable(Database& db) {
@@ -90,7 +91,7 @@ TEST(Table, Select) {
                      return true;
                    },
                    { "name", "age", "non-existent" }),
-               InvalidRowException);
+               NoSuchColumnException);
 }
 
 TEST(Lexer, EscapeSequences) {
@@ -170,6 +171,10 @@ TEST(Database, Insert) {
   EXPECT_THROW(db.execute("INSERT (age = 19) INTO non_existent;"),
                CommandException);
 
+  // no such column
+  EXPECT_THROW(db.execute("INSERT (non_existent = 19) INTO test;"),
+               NoSuchColumnException);
+
   // syntax errors
   EXPECT_THROW(db.execute("INSERT age = 19 INTO test;"), ParserException);
   EXPECT_THROW(db.execute("INSERT ( = 19) INTO test;"), ParserException);
@@ -209,6 +214,71 @@ TEST(Database, Select) {
   EXPECT_THROW(db.execute(R"(select * from ;)"), ParserException);
   EXPECT_THROW(db.execute(R"(select * from test something_else;)"),
                ParserException);
+}
+
+TEST(Database, Update) {
+  Database db;
+  db.execute("create table test (id integer autoincrement, name string "
+             "unique);");
+  db.execute("insert (name = \"Ann\") into test;");
+  db.execute("insert (name = \"Bob\") into test;");
+
+  Result r;
+  EXPECT_NO_THROW(
+      r = db.execute(
+          R"(update test set (name = "Alice") where id = 1;)"));
+  EXPECT_EQ(r.getNumAffectedRows(), 1);
+  EXPECT_NO_THROW(db.execute(
+      R"(update test set (name = "_" + name +"_") where name = "Bob";)"));
+  EXPECT_NO_THROW(db.execute(R"(update test set () where true;)"));
+
+  // no such table
+  EXPECT_THROW(db.execute(R"(update non_existent set () where true;)"),
+               CommandException);
+
+  // no such column
+  EXPECT_THROW(
+      db.execute(R"(update test set (non_existent = "Ann") where true;)"),
+      NoSuchColumnException);
+
+  // constraint break
+  EXPECT_THROW(
+      db.execute(R"(update test set (name = "Alice") where true;)"),
+      InvalidRowException);
+  EXPECT_THROW(
+      db.execute(R"(update test set (id = 5, name="Ann") where id = 1;)"),
+      CommandException);
+
+  // syntax errors
+  EXPECT_THROW(db.execute(R"(update test set (name = "ann") where  1;)"),
+               CommandException);
+  EXPECT_THROW(
+      db.execute(R"(update test set (name = "ann" some, ) where true;)"),
+      ParserException);
+}
+
+TEST(Database, Delete) {
+  Database db;
+  db.execute("create table test (id integer autoincrement, name string "
+             "unique);");
+  db.execute("insert (name = \"Ann\") into test;");
+  db.execute("insert (name = \"Bob\") into test;");
+
+  Result r;
+  EXPECT_NO_THROW(r = db.execute(R"(delete from test where id = 1;)"));
+  EXPECT_EQ(r.getNumAffectedRows(), 1);
+  EXPECT_NO_THROW(db.execute(R"(delete from test  where name = "Bob";)"));
+
+  db.execute("insert (name = \"Ann\") into test;");
+  db.execute("insert (name = \"Bob\") into test;");
+
+  // no such table
+  EXPECT_THROW(db.execute(R"(delete from non_existent where true;)"),
+               CommandException);
+
+  // syntax errors
+  EXPECT_THROW(db.execute(R"(delete from test where (2+2)*2;)"),
+               CommandException);
 }
 
 TEST(Result, Iterate) {

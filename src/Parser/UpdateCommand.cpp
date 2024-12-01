@@ -1,7 +1,6 @@
 #include "adun/Parser/UpdateCommand.hpp"
 #include "adun/Database.hpp"
 #include "adun/Parser/Command.hpp"
-#include "adun/Parser/VariableExpr.hpp"
 #include <fmt/format.h>
 
 namespace adun::ast {
@@ -25,18 +24,25 @@ auto UpdateCommand::execute(Database& db) -> Result {
 
   size_t affectedRows{ 0 };
   const auto& colMap{ table.getColumnMap() };
-  table.traverseRows(filter,
-                     [this, &affectedRows, &table, &colMap](auto& row) {
-                       for (auto& [columnName, expr] : m_Values) {
-                         if (!colMap.contains(columnName)) {
-                           throw NoSuchColumnException(columnName);
-                         }
+  table.traverseRows(
+      filter, [this, &affectedRows, &table, &colMap](auto& row) {
+        for (auto& [columnName, expr] : m_Values) {
+          if (!colMap.contains(columnName)) {
+            throw NoSuchColumnException(columnName);
+          }
 
-                         row.get(colMap.at(columnName)) =
-                             expr->evaluate(row, table.getColumnMap());
-                       }
-                       affectedRows++;
-                     });
+          if (table.getScheme().at(columnName).modifiers &
+              Column::Modifier::AutoIncrement) {
+            throw CommandException{ fmt::format(
+                "Cannot update autoincrement column '{}'", columnName) };
+          }
+
+          row.get(colMap.at(columnName)) =
+              expr->evaluate(row, table.getColumnMap());
+          table.checkConstraintsAgainst(row);
+        }
+        affectedRows++;
+      });
   return Result{ {}, {}, affectedRows };
 }
 

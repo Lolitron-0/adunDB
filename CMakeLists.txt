@@ -25,7 +25,8 @@ set(SOURCES
     src/Parser/CreateCommand.cpp
     src/Parser/InsertCommand.cpp
     src/Parser/SelectCommand.cpp
-    src/Parser/UpdateCommand.cpp)
+    src/Parser/UpdateCommand.cpp
+    src/Parser/DeleteCommand.cpp)
 
 add_library(${PROJECT_NAME} ${SOURCES})
 

@@ -2,6 +2,7 @@
 #include "adun/Exceptions.hpp"
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Parser/CreateCommand.hpp"
+#include "adun/Parser/DeleteCommand.hpp"
 #include "adun/Parser/ExpressionNode.hpp"
 #include "adun/Parser/InsertCommand.hpp"
 #include "adun/Parser/Lexer.hpp"
@@ -23,15 +24,12 @@ public:
 
   auto buildAST() -> Ref<ast::Command>;
 
-  [[nodiscard]] auto isASTInvalid() const -> bool {
-    return m_ASTInvalid;
-  }
-
 private:
   auto parseCreateCommand() -> Unique<ast::CreateCommand>;
   auto parseInsertCommand() -> Unique<ast::InsertCommand>;
   auto parseSelectCommand() -> Unique<ast::SelectCommand>;
   auto parseUpdateCommand() -> Unique<ast::UpdateCommand>;
+  auto parseDeleteCommand() -> Unique<ast::DeleteCommand>;
   auto parseValueExpr() -> Unique<ast::ValueExpr>;
   auto parseParenExpr() -> Unique<ast::ExpressionNode>;
   auto parseIdentifierExpr() -> Unique<ast::ExpressionNode>;
@@ -56,11 +54,6 @@ private:
     return *m_CurTokIter;
   }
 
-  [[nodiscard]] auto invalidNode() -> std::nullptr_t {
-    m_ASTInvalid = true;
-    return nullptr;
-  }
-
   inline void consumeToken() {
     m_CurTokIter++;
   }
@@ -68,7 +61,6 @@ private:
   Ref<TokenList> m_Tokens;
   TokenList::const_iterator m_CurTokIter;
   Ref<ast::Command> m_ASTRoot;
-  bool m_ASTInvalid{ false };
 };
 
 } // namespace adun

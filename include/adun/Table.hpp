@@ -5,10 +5,10 @@
 #include "adun/Row.hpp"
 #include "adun/Types.hpp"
 #include "adun/Value.hpp"
+#include <list>
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <vector>
 
 namespace adun {
 
@@ -24,6 +24,7 @@ public:
   Table(std::string name, Scheme scheme);
 
   [[nodiscard]] auto getName() const -> std::string;
+  [[nodiscard]] auto getScheme() const -> const Scheme&;
 
   auto getColumnMap() const -> const ColumnNameIndexMap&;
 
@@ -33,13 +34,17 @@ public:
   void traverseRows(const Selector& filter,
                     const std::function<void(Row&)>& callback);
 
+  auto deleteRows(const Selector& filter) -> size_t;
+
   void addRow(
       const std::vector<std::pair<std::string, Value>>& assignments);
 
+  void checkConstraintsAgainst(const Row& row) const;
 private:
+
   std::string m_Name;
   Scheme m_Header;
-  std::vector<Row> m_Rows;
+  std::list<Row> m_Rows;
   mutable ColumnNameIndexMap m_ColumnMap;
 };
 

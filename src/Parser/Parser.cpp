@@ -4,6 +4,7 @@
 #include "adun/Parser/ASTNode.hpp"
 #include "adun/Parser/BinOpExpr.hpp"
 #include "adun/Parser/CreateCommand.hpp"
+#include "adun/Parser/DeleteCommand.hpp"
 #include "adun/Parser/ExpressionNode.hpp"
 #include "adun/Parser/Token.hpp"
 #include "adun/Parser/UnaryOpExpr.hpp"
@@ -59,6 +60,9 @@ auto Parser::buildAST() -> Ref<ast::Command> {
     break;
   case TokenKind::KW_update:
     m_ASTRoot = parseUpdateCommand();
+    break;
+  case TokenKind::KW_delete:
+    m_ASTRoot = parseDeleteCommand();
     break;
   default:
     emitError(curTok(), "Expected command name");
@@ -195,6 +199,25 @@ auto Parser::parseUpdateCommand() -> Unique<ast::UpdateCommand> {
       std::move(tableName), std::move(assignments), std::move(cond));
 }
 
+auto Parser::parseDeleteCommand() -> Unique<ast::DeleteCommand> {
+  adun_assert(curTok().is(TokenKind::KW_delete), "Expected 'DELETE'");
+  consumeToken();
+
+  expectConsume(TokenKind::KW_from);
+
+  expect(TokenKind::Identifier);
+  std::string tableName{ curTok().getStringView() };
+  consumeToken();
+
+  expectConsume(TokenKind::KW_where);
+
+  Ref<ast::ExpressionNode> cond{ parseExpression() };
+
+  expectConsumeEnd();
+  return makeUnique<ast::DeleteCommand>(std::move(tableName),
+                                        std::move(cond));
+}
+
 auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
   Value value;
   Unique<ast::ExpressionNode> compoundResult;
@@ -219,7 +242,6 @@ auto Parser::parseValueExpr() -> Unique<ast::ValueExpr> {
     break;
   default:
     emitError(curTok(), "Expected value expression");
-    return invalidNode();
     break;
   }
   auto token{ curTok() };
@@ -249,13 +271,8 @@ auto Parser::parseIdentifierExpr() -> Unique<ast::ExpressionNode> {
 
   consumeToken();
 
-  if (curTok().isNot(TokenKind::LParen)) {
-    // it's a variable
-    return makeUnique<ast::VariableExpr>(
-        std::string{ identifierTok.getStringView() });
-  }
-
-  return invalidNode();
+  return makeUnique<ast::VariableExpr>(
+      std::string{ identifierTok.getStringView() });
 }
 
 auto Parser::parseCompoundExpression()
@@ -276,21 +293,16 @@ auto Parser::parseCompoundExpression()
         makeUnique<ast::UnaryOpExpr>(parseExpression(), TokenKind::Pipe);
     if (curTok().isNot(TokenKind::Pipe)) {
       emitError(curTok(), "Expected closing '|'");
-      return invalidNode();
     }
     consumeToken();
     return compoundResult;
   default:
     return parseValueExpr();
   }
-  return invalidNode();
 }
 
 auto Parser::parseExpression() -> std::unique_ptr<ast::ExpressionNode> {
   auto lhs{ parseCompoundExpression() };
-  if (!lhs) {
-    return invalidNode();
-  }
   return parseBinOpRhs(std::move(lhs));
 }
 
@@ -314,9 +326,6 @@ auto Parser::parseBinOpRhs(std::unique_ptr<ast::ExpressionNode> lhs,
     auto binOp{ curTok() };
     consumeToken();
     auto rhs{ parseCompoundExpression() };
-    if (!rhs) {
-      return invalidNode();
-    }
 
     // now: lhs binOp rhs unparsed
 
@@ -324,9 +333,6 @@ auto Parser::parseBinOpRhs(std::unique_ptr<ast::ExpressionNode> lhs,
     // if associates to the right: lhs binOp (rhs lookahead unparsed)
     if (tokPrecedence < nextPrecedence) {
       rhs = parseBinOpRhs(std::move(rhs), tokPrecedence + 1);
-      if (!rhs) {
-        return invalidNode();
-      }
     }
 
     // now: (lhs binOp rhs) lookahead unparsed
