@@ -133,16 +133,16 @@ auto Table::getColumnMap() const -> const ColumnNameIndexMap& {
 void Table::checkConstraintsAgainst(const Row& row) const {
   for (auto&& [columnName, column] : m_Header) {
     if (column.modifiers & Column::Modifier::Unique &&
-        std::ranges::find_if(m_Rows,
-                             [&column, val = row.get(column.index),
-                              &row](const auto& otherRow) {
-                               // hacky, but i'm lazy to implement Key
-                               // comlumn modifier
-                               if (&row == &otherRow) {
-                                 return false;
-                               }
-                               return otherRow.get(column.index) == val;
-                             }) != m_Rows.end()) {
+        std::ranges::find_if(m_Rows, [index = column.index,
+                                      val   = row.get(column.index),
+                                      &row](const auto& otherRow) {
+          // hacky, but i'm lazy to implement Key
+          // comlumn modifier
+          if (&row == &otherRow) {
+            return false;
+          }
+          return otherRow.get(index) == val;
+        }) != m_Rows.end()) {
       throw InvalidRowException(
           fmt::format("Value {} is not unique", columnName));
     }
